@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": ["Bash(./scripts/check.sh)", "Bash(uv run pytest:*)", "Bash(uv run ruff:*)"],
+    "deny": ["Read(./.env)", "Read(./secrets/**)"]
+  },
+  "hooks": {
+    "PostToolUse": [{
+      "matcher": "Edit|Write|MultiEdit",
+      "hooks": [{ "type": "command",
+        "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *.py) uv run ruff format \"$f\" >/dev/null 2>&1 || true;; esac" }]
+    }],
+    "Stop": [{
+      "hooks": [{ "type": "command",
+        "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop-check.sh", "timeout": 300 }]
+    }]
+  }
+}
