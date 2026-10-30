@@ -1,6 +1,7 @@
-"""Typer 명령 모음. Phase 0에서는 init, status 만 동작한다."""
+"""Typer 명령 모음. Phase 1까지: init, status, import instagram/urls, sync youtube."""
 
 import logging
+import sqlite3
 from pathlib import Path
 from typing import Annotated
 
@@ -10,7 +11,8 @@ from rich.logging import RichHandler
 from rich.table import Table
 
 from reelbox import db
-from reelbox.config import get_settings
+from reelbox.config import Settings, get_settings
+from reelbox.importers import ImportReport, instagram, urllist, youtube
 
 app = typer.Typer(help="저장한 릴스·쇼츠를 AI로 요약·주제 분류하는 개인용 앱", no_args_is_help=True)
 import_app = typer.Typer(help="내보내기 파일·목록 가져오기", no_args_is_help=True)
@@ -40,6 +42,19 @@ def _not_implemented(command: str) -> None:
     raise typer.Exit(code=1)
 
 
+def _open_db(settings: Settings) -> sqlite3.Connection:
+    if not settings.db_path.exists():
+        console.print(f"[red]DB가 없음:[/red] {settings.db_path}\n먼저 [bold]reelbox init[/bold]")
+        raise typer.Exit(code=1)
+    return db.connect(settings.db_path)
+
+
+def _print_report(report: ImportReport) -> None:
+    console.print(f"[green]완료[/green] {report.summary()}")
+    if report.unrecognized:
+        console.print("[yellow]인식 실패 항목은 -v 로 다시 실행하면 로그에서 볼 수 있음[/yellow]")
+
+
 @app.command()
 def init() -> None:
     """DB 만들기·마이그레이션."""
@@ -55,12 +70,7 @@ def init() -> None:
 @app.command()
 def status() -> None:
     """상태별 개수, 최근 실패."""
-    settings = get_settings()
-    if not settings.db_path.exists():
-        console.print(f"[red]DB가 없음:[/red] {settings.db_path}\n먼저 [bold]reelbox init[/bold]")
-        raise typer.Exit(code=1)
-
-    conn = db.connect(settings.db_path)
+    conn = _open_db(get_settings())
     try:
         counts = db.status_counts(conn)
         failures = db.recent_failures(conn)
@@ -88,9 +98,20 @@ def status() -> None:
 
 
 @import_app.command("instagram")
-def import_instagram(path: Annotated[Path, typer.Argument(help="내보내기 폴더 또는 zip")]) -> None:
+def import_instagram(
+    path: Annotated[Path, typer.Argument(help="내보내기 폴더 또는 zip")],
+    limit: LimitOpt = None,
+) -> None:
     """인스타 내보내기 가져오기."""
-    _not_implemented("import instagram")
+    conn = _open_db(get_settings())
+    try:
+        report = instagram.import_instagram(conn, path, limit=limit)
+    except FileNotFoundError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    finally:
+        conn.close()
+    _print_report(report)
 
 
 @import_app.command("youtube")
@@ -100,15 +121,66 @@ def import_youtube(path: Annotated[Path, typer.Argument(help="테이크아웃 �
 
 
 @import_app.command("urls")
-def import_urls(path: Annotated[Path, typer.Argument(help="줄마다 링크 하나인 파일")]) -> None:
+def import_urls(
+    path: Annotated[Path, typer.Argument(help="줄마다 링크 하나인 파일")],
+    limit: LimitOpt = None,
+) -> None:
     """링크 목록 가져오기."""
-    _not_implemented("import urls")
+    if not path.is_file():
+        console.print(f"[red]파일이 없음:[/red] {path}")
+        raise typer.Exit(code=1)
+    conn = _open_db(get_settings())
+    try:
+        report = urllist.import_urls(conn, path, limit=limit)
+    finally:
+        conn.close()
+    _print_report(report)
 
 
 @sync_app.command("youtube")
-def sync_youtube() -> None:
+def sync_youtube(limit: LimitOpt = None, dry_run: DryRunOpt = False) -> None:
     """유튜브 '저장된 Shorts 동영상' 목록을 읽어 새 항목 추가."""
-    _not_implemented("sync youtube")
+    settings = get_settings()
+    url = settings.youtube_saved_shorts_url
+    if not url:
+        console.print(
+            "[red]목록 주소가 없음.[/red] .env 에 REELBOX_YOUTUBE_SAVED_SHORTS_URL 을 넣는다."
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        cookies = youtube.CookieSource.from_settings(settings)
+        with console.status("저장된 Shorts 목록 읽는 중..."):
+            entries = youtube.fetch_playlist(url, cookies, limit)
+    except youtube.CookieError as exc:
+        console.print(f"[red]쿠키 문제로 목록을 읽지 못함[/red]\n[bold]원인[/bold] {exc.cause}")
+        console.print(f"[bold]해결[/bold] {exc.fix}")
+        if exc.detail:
+            console.print(f"[dim]yt-dlp: {exc.detail}[/dim]")
+        raise typer.Exit(code=1) from exc
+    except youtube.PlaylistError as exc:
+        console.print(f"[red]목록을 읽지 못함:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    if dry_run:
+        table = Table(title=f"저장된 Shorts (앞에서 {len(entries)}개, 목록 순서)")
+        table.add_column("#", justify="right")
+        table.add_column("ID")
+        table.add_column("제목")
+        for i, entry in enumerate(entries, start=1):
+            table.add_row(str(i), entry.video_id, entry.title or "")
+        console.print(table)
+        console.print("--dry-run: DB에 쓰지 않음")
+        return
+
+    if not entries:
+        console.print("[yellow]목록이 비어 있음.[/yellow] 다른 계정의 쿠키인지 확인한다.")
+    conn = _open_db(settings)
+    try:
+        report = youtube.add_entries(conn, entries)
+    finally:
+        conn.close()
+    _print_report(report)
 
 
 @app.command()

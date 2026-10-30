@@ -69,8 +69,10 @@ Go가 더 익숙하더라도, 이 프로젝트는 AI·영상 도구 때문에 Py
 
 - 받는 법: 설정 → 계정 센터 → 내 정보 및 권한 → 내 정보 다운로드. **형식은 반드시 JSON**, 항목은 "저장됨"만 고르면 빨리 온다. 처리에 며칠 걸릴 수 있다.
 - 파일: `saved_posts.json`(저장 목록), `saved_collections.json`(컨렉션). 폴더 경로는 버전마다 달라서 **압축을 푼 폴더 전체에서 파일 이름으로 찾는다.**
-- 알려진 구조 ([contextbolt 가이드](https://contextbolt.com/blog/instagram-saved-posts/)): `saved_saved_media[]` 배열의 각 항목에 `title`(작성자 아이디)과 `string_map_data["Saved on"]` 안의 `href`(게시물 링크), `timestamp`(저장 시각, 유닉스 초)가 있다.
-- 주의: 키 이름이 언어 설정에 따라 바뀔 수 있고(예: "Saved on"), 구조도 바뀜다. 파서는 키 이름에 기대지 말고 **`href`와 `timestamp`를 재귀적으로 찾는 방식**으로 만든다. 릴스와 사진 게시물이 섞여 있다(`/p/`, `/reel/`).
+- 옛 구조 ([contextbolt 가이드](https://contextbolt.com/blog/instagram-saved-posts/)): `saved_saved_media[]` 배열의 각 항목에 `title`(작성자 아이디)과 `string_map_data["Saved on"]` 안의 `href`(게시물 링크), `timestamp`(저장 시각, 유닉스 초)가 있다.
+- 2026년 구조 (Phase 1에서 실제 파일로 확인): `saved_posts.json`은 최상위가 리스트이고, 각 항목은 `{timestamp, media, label_values[], fbid}`이다. 최상위 `timestamp`가 저장 시각, `label_values` 중 `label: "URL"` 항목의 `href`가 게시물 링크다. 캡션·제목·해시태그·소유자(사용자 이름)도 `label_values` 안에 있다. `saved_collections.json`은 컬렉션 하나면 dict 하나이고, `label: "이름"`이 컬렉션 이름, `title: "미디어"` 아래에 게시물들이 중첩된다.
+- 글자 깨짐: 라벨과 값의 한글이 UTF-8 바이트를 latin-1 글자로 저장한 형태로 깨져 있다(예: "캡션" → `\u00ec\u00ba\u00a1…`). 읽을 때 `latin-1`로 인코딩한 뒤 `utf-8`로 디코딩해 되돌린다.
+- 주의: 키 이름이 언어 설정에 따라 바뀔 수 있고(예: "Saved on", "캡션"/"Caption"), 구조도 바뀐다. 파서는 키 이름에 기대지 말고 **`href`와 `timestamp`를 재귀적으로 찾는 방식**으로 만든다. 릴스와 사진 게시물이 섞여 있다(`/p/`, `/reel/`). 한 게시물이 여러 컬렉션에 있으면 `collection`에는 첫 번째만 기록한다.
 
 ### 유튜브
 
@@ -79,7 +81,7 @@ Go가 더 익숙하더라도, 이 프로젝트는 AI·영상 도구 때문에 Py
 - **자동 동기화:** 같은 목록을 다시 읽으면 새로 저장한 쇼츠만 추가된다. 그래서 유튜브는 휴대폰 공유 없이도 `reelbox sync youtube`(서버가 켜져 있으면 하루 몇 번 자동)로 새 저장분을 따라간다.
 - **쿠키 주의:** 윈도우의 Chrome은 쿠키 암호화 때문에 yt-dlp가 쿠키를 못 읽는 경우가 많다. Firefox에서 유튜브에 로그인해 `--cookies-from-browser firefox`를 쓰거나, 쿠키를 `cookies.txt` 파일로 내보내 쓴다. 쿠키 파일은 비밀번호처럼 다루고 커밋하지 않는다.
 - **한계:** 목록에는 저장 시각이 없을 수 있다. 그때는 목록 안 순서를 기록해 정렬에 쓰고, 처음 발견한 시각을 대신 넣는다.
-- **보조 경로 (테이크아웃):** Google 테이크아웃의 재생목록 내보내기에 "저장된 Shorts 동영상"이 들어 있는지 Phase 1에서 확인한다. 들어 있으면 저장 시각을 채우는 데만 쓴다.
+- **보조 경로 (테이크아웃):** Google 테이크아웃의 재생목록 내보내기에 "저장된 Shorts 동영상"이 들어 있는지 Phase 1에서 확인한다. 들어 있으면 저장 시각을 채우는 데만 쓴다. (Phase 1: 테이크아웃이 없어 확인하지 못했다. `import youtube`는 테이크아웃이 생기면 그때 만든다.)
 
 ### 그 외 입구
 

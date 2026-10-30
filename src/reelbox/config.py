@@ -19,6 +19,8 @@ class Settings(BaseSettings):
         env_file=PROJECT_ROOT / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        # .env 에 'KEY=' 로 비워 둔 값은 설정 안 함(None)으로 본다
+        env_ignore_empty=True,
     )
 
     data_dir: Path = PROJECT_ROOT / "data"

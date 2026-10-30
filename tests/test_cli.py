@@ -38,10 +38,7 @@ def test_init_then_status(settings: Settings) -> None:
 @pytest.mark.parametrize(
     "args",
     [
-        ["import", "instagram", "x"],
         ["import", "youtube", "x"],
-        ["import", "urls", "x"],
-        ["sync", "youtube"],
         ["enrich", "--limit", "5"],
         ["analyze", "--dry-run"],
         ["organize", "--full"],

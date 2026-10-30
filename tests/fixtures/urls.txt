@@ -1,0 +1,8 @@
+# 브라우저 확장으로 뽑은 목록 (가짜)
+https://www.youtube.com/shorts/urlA0000001
+https://youtu.be/urlA0000001?si=dup
+
+https://www.instagram.com/reel/URLreel0002/?igsh=xyz
+이 영상 봐 https://www.instagram.com/p/URLpost0003/ 진짜 좋음
+https://example.com/not-a-video
+   https://m.youtube.com/watch?v=urlB0000004&t=5

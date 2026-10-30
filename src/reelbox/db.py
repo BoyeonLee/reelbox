@@ -3,12 +3,15 @@
 import logging
 import re
 import sqlite3
+from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 
 import sqlite_vec
 from pydantic import BaseModel
 
 from reelbox.config import Settings
+from reelbox.urls import parse_url
 
 logger = logging.getLogger(__name__)
 
@@ -125,3 +128,71 @@ def recent_failures(conn: sqlite3.Connection, limit: int = 5) -> list[FailedItem
         (limit,),
     )
     return [FailedItem(**dict(row)) for row in rows]
+
+
+class AddOutcome(StrEnum):
+    ADDED = "added"
+    DUPLICATE = "duplicate"
+    DELETED = "deleted"  # 휴지통에서 영구 삭제한 영상 → 다시 넣지 않음
+    UNRECOGNIZED = "unrecognized"
+
+
+def to_iso(dt: datetime) -> str:
+    """DB 에 넣는 시각 형식 (ISO-8601 UTC, 초 단위)."""
+    return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def add_item(
+    conn: sqlite3.Connection,
+    url: str,
+    *,
+    saved_at: datetime | None,
+    source: str,
+    collection: str | None = None,
+) -> AddOutcome:
+    """모든 입구(내보내기·동기화·URL 목록·공유)가 쓰는 항목 추가 함수. 커밋은 부르는 쪽이 한다.
+
+    이미 있는 영상이면 새로 만들지 않고, 비어 있던 saved_at·collection 만 채운다.
+    그래서 같은 파일을 여러 번 넣어도 결과가 같다(멱등).
+    """
+    parsed = parse_url(url)
+    if parsed is None:
+        return AddOutcome.UNRECOGNIZED
+    saved = to_iso(saved_at) if saved_at else None
+
+    cur = conn.execute(
+        """
+        INSERT INTO items
+            (platform, source_id, url, saved_at, imported_from, collection, media_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (platform, source_id) DO NOTHING
+        """,
+        (
+            parsed.platform,
+            parsed.source_id,
+            parsed.url,
+            saved,
+            source,
+            collection,
+            parsed.media_type,
+        ),
+    )
+    if cur.rowcount == 1:
+        return AddOutcome.ADDED
+
+    row = conn.execute(
+        "SELECT id, status FROM items WHERE platform = ? AND source_id = ?",
+        (parsed.platform, parsed.source_id),
+    ).fetchone()
+    if row["status"] == "deleted":
+        return AddOutcome.DELETED
+    conn.execute(
+        """
+        UPDATE items
+        SET saved_at = COALESCE(saved_at, ?), collection = COALESCE(collection, ?)
+        WHERE id = ? AND (
+            (saved_at IS NULL AND ? IS NOT NULL) OR (collection IS NULL AND ? IS NOT NULL))
+        """,
+        (saved, collection, row["id"], saved, collection),
+    )
+    return AddOutcome.DUPLICATE
