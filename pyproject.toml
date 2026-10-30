@@ -1,0 +1,40 @@
+[project]
+name = "reelbox"
+version = "0.1.0"
+description = "Organize saved Instagram Reels and YouTube Shorts by topic with AI"
+authors = [
+    { name = "BoyeonLee", email = "dlqhdus628@naver.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.14.2",
+    "pydantic-settings>=2.16.2",
+    "rich>=15.0.0",
+    "sqlite-vec>=0.1.9",
+    "typer>=0.27.3",
+]
+
+[project.scripts]
+reelbox = "reelbox.cli:app"
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.3",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/F: 기본 오류, I: import 정렬, UP: 최신 문법, B: 흔한 버그 패턴
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

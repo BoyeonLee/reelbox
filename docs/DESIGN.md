@@ -105,7 +105,7 @@ Go가 더 익숙하더라도, 이 프로젝트는 AI·영상 도구 때문에 Py
 
 ### status 흐름
 
-`imported` → `enriched` → `analyzed` → `indexed`. 실패하면 `failed`(error에 이유, attempts 증가, 3회까지 재시도). 영상이 삭제·비공개면 `unavailable`, 휴지통에서 영구 삭제되면 deleted, 스키마 변경은 간단한 번호별 SQL 마이그레이션 쇼츠 길이를 넘으면 `skipped`. 파일(`migrations/001_init.sql` …)로 관리한다.
+`imported` → `enriched` → `analyzed` → `indexed`. 실패하면 `failed`(error에 이유, attempts 증가, 3회까지 재시도). 영상이 삭제·비공개면 `unavailable`, 쇼츠 길이를 넘으면 `skipped`, 휴지통에서 영구 삭제되면 `deleted`. 스키마 변경은 간단한 번호별 SQL 마이그레이션 파일(`migrations/001_init.sql` …)로 관리한다.
 
 ### 숨기기와 삭제
 
