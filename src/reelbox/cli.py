@@ -1,4 +1,4 @@
-"""Typer 명령 모음. Phase 2까지: init, status, import instagram/urls, sync youtube, enrich."""
+"""Typer 명령 모음. Phase 3까지: init, status, import, sync youtube, enrich, analyze, review."""
 
 import logging
 import sqlite3
@@ -11,6 +11,8 @@ from rich.logging import RichHandler
 from rich.table import Table
 
 from reelbox import db
+from reelbox.ai import analyze as analyzer
+from reelbox.ai.llm import AnthropicLLM, LLMFatalError, LLMUnavailableError
 from reelbox.config import Settings, get_settings
 from reelbox.enrich import runner
 from reelbox.enrich.transcribe import WhisperTranscriber
@@ -259,10 +261,107 @@ def enrich(
     _print_enrich_report(report)
 
 
+def _make_llm(settings: Settings) -> AnthropicLLM:
+    if settings.anthropic_api_key is None:
+        console.print(
+            "[red]Claude API 키가 없음.[/red] .env 에 ANTHROPIC_API_KEY=sk-ant-... 를 넣는다.\n"
+            "키는 https://platform.claude.com 의 API Keys 에서 만든다 (API 요금은 claude.ai "
+            "구독과 따로 충전)."
+        )
+        raise typer.Exit(code=1)
+    return AnthropicLLM(
+        settings.analyze_model,
+        effort=settings.analyze_effort,
+        max_tokens=settings.analyze_max_tokens,
+        api_key=settings.anthropic_api_key,
+    )
+
+
+def _print_dry_run(report: analyzer.DryRunReport) -> None:
+    table = Table(title="analyze --dry-run (모델은 부르지 않음)")
+    table.add_column("항목")
+    table.add_column("값", justify="right")
+    table.add_row("분석할 항목", f"{report.items}개")
+    table.add_row("모델 / 프롬프트", f"{report.model} / {report.prompt_version}")
+    estimated = report.items - report.counted
+    note = f" ({report.counted}개를 세고 {estimated}개는 평균으로 추정)" if estimated else ""
+    table.add_row("입력 토큰", f"{report.input_tokens:,}{note}")
+    table.add_row("출력 토큰 (추정)", f"{report.output_tokens:,}")
+    table.add_row("예상 비용", f"약 ${report.cost_usd:.3f}")
+    console.print(table)
+
+
+def _print_analyze_report(report: analyzer.AnalyzeReport, settings: Settings) -> None:
+    table = Table(title="분석 결과")
+    table.add_column("항목")
+    table.add_column("값", justify="right")
+    table.add_row("[green]analyzed[/green]", str(report.analyzed))
+    table.add_row("[red]failed[/red]", str(report.failed))
+    if report.retried:
+        table.add_row("형식 오류로 다시 부름", str(report.retried))
+    table.add_row(
+        "사용 토큰 (입력 / 출력)",
+        f"{report.usage.input_tokens:,} / {report.usage.output_tokens:,}",
+    )
+    table.add_row("비용", f"약 ${analyzer.estimate_cost(settings, report.usage):.4f}")
+    console.print(table)
+    if report.stopped:
+        console.print(f"[red]분석을 멈춤[/red] {report.stopped}")
+    if report.failed:
+        console.print("실패 이유는 [bold]reelbox status[/bold] 에서 볼 수 있음")
+
+
 @app.command()
 def analyze(limit: LimitOpt = None, dry_run: DryRunOpt = False) -> None:
     """AI 요약·태그."""
-    _not_implemented("analyze")
+    settings = get_settings()
+    llm = _make_llm(settings)
+    conn = _open_db(settings)
+    try:
+        if dry_run:
+            with console.status("토큰 세는 중..."):
+                preview = analyzer.dry_run(conn, settings, llm, limit=limit)
+            _print_dry_run(preview)
+            return
+        with console.status("분석 준비 중...") as spinner:
+
+            def on_item(n: int, total: int, item: db.AnalyzeInput) -> None:
+                spinner.update(f"분석 중 {n}/{total} [dim]{item.url}[/dim]")
+
+            report = analyzer.analyze_items(conn, settings, llm, limit=limit, on_item=on_item)
+    except (LLMFatalError, LLMUnavailableError) as exc:  # --dry-run 의 토큰 세기에서 남
+        console.print(f"[red]Claude API 오류[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    finally:
+        conn.close()
+    _print_analyze_report(report, settings)
+
+
+@app.command()
+def review(
+    limit: Annotated[int, typer.Option("--limit", help="보여줄 개수")] = 10,
+) -> None:
+    """최근 분석 결과를 표로 보기 (제목·요약·주제·태그)."""
+    conn = _open_db(get_settings())
+    try:
+        rows = db.recent_analyses(conn, limit)
+    finally:
+        conn.close()
+    if not rows:
+        console.print("분석된 항목이 없음. 먼저 [bold]reelbox analyze[/bold]")
+        return
+    table = Table(title=f"최근 분석 {len(rows)}개", show_lines=True)
+    table.add_column("id", justify="right")
+    table.add_column("제목 / 작성자", max_width=28)
+    table.add_column("요약", max_width=60)
+    table.add_column("주제", max_width=16)
+    table.add_column("태그", max_width=28)
+    for r in rows:
+        head = r.title or "(제목 없음)"
+        if r.author:
+            head += f"\n[dim]{r.author} · {r.platform}[/dim]"
+        table.add_row(str(r.id), head, r.summary_ko or "", r.raw_topic or "", ", ".join(r.tags))
+    console.print(table)
 
 
 @app.command()

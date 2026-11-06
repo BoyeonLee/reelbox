@@ -1,5 +1,6 @@
 """SQLite 연결, 번호별 마이그레이션, 저장소 함수."""
 
+import json
 import logging
 import re
 import sqlite3
@@ -335,3 +336,106 @@ def mark_unavailable(conn: sqlite3.Connection, item_id: int, error: str) -> None
         conn.execute(
             "UPDATE items SET status = 'unavailable', error = ? WHERE id = ?", (error, item_id)
         )
+
+
+# --- AI 분석(analyze) 단계 ---
+
+
+class AnalyzeInput(BaseModel):
+    id: int
+    platform: Platform
+    url: str
+    media_type: MediaType | None
+    title: str | None
+    author: str | None
+    description: str | None
+    collection: str | None
+    transcript_source: TranscriptSource | None
+    transcript_text: str | None
+
+
+def analyze_candidates(
+    conn: sqlite3.Connection, *, max_attempts: int, limit: int | None
+) -> list[AnalyzeInput]:
+    """분석할 차례인 항목. enriched 먼저, 그다음 분석 단계에서 실패한 것.
+
+    보강 결과(transcripts)는 있고 분석 결과(analyses)는 없는 failed 를 분석 단계 실패로 본다.
+    """
+    rows = conn.execute(
+        """
+        SELECT i.id, i.platform, i.url, i.media_type, i.title, i.author, i.description,
+               i.collection, t.source AS transcript_source, t.text AS transcript_text
+        FROM items AS i
+        JOIN transcripts AS t ON t.item_id = i.id
+        WHERE (i.status = 'enriched'
+               OR (i.status = 'failed' AND i.attempts < :max_attempts
+                   AND NOT EXISTS (SELECT 1 FROM analyses AS a WHERE a.item_id = i.id)))
+        ORDER BY i.status = 'failed', i.id
+        LIMIT :limit
+        """,
+        {"max_attempts": max_attempts, "limit": -1 if limit is None else limit},
+    )
+    return [AnalyzeInput(**dict(r)) for r in rows]
+
+
+class AnalysisRecord(BaseModel):
+    summary_ko: str
+    key_points: list[str]
+    raw_topic: str
+    tags: list[str]
+    content_language: str
+    model: str
+    prompt_version: str
+
+
+def save_analysis(conn: sqlite3.Connection, item_id: int, a: AnalysisRecord) -> None:
+    """analyses 를 넣고(있으면 바꾸고) analyzed 로 바꾼다. 한 트랜잭션."""
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO analyses (item_id, summary_ko, key_points, tags, raw_topic,
+                                  content_language, model, prompt_version)
+            VALUES (:id, :summary_ko, :key_points, :tags, :raw_topic,
+                    :content_language, :model, :prompt_version)
+            ON CONFLICT (item_id) DO UPDATE SET
+                summary_ko = excluded.summary_ko, key_points = excluded.key_points,
+                tags = excluded.tags, raw_topic = excluded.raw_topic,
+                content_language = excluded.content_language, model = excluded.model,
+                prompt_version = excluded.prompt_version,
+                created_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+            """,
+            {
+                **a.model_dump(),
+                "key_points": json.dumps(a.key_points, ensure_ascii=False),
+                "tags": json.dumps(a.tags, ensure_ascii=False),
+                "id": item_id,
+            },
+        )
+        conn.execute("UPDATE items SET status = 'analyzed', error = NULL WHERE id = ?", (item_id,))
+
+
+class AnalysisView(BaseModel):
+    """review 명령에서 보여줄 한 줄."""
+
+    id: int
+    platform: str
+    title: str | None
+    author: str | None
+    summary_ko: str | None
+    raw_topic: str | None
+    tags: list[str]
+    created_at: str
+
+
+def recent_analyses(conn: sqlite3.Connection, limit: int) -> list[AnalysisView]:
+    rows = conn.execute(
+        """
+        SELECT i.id, i.platform, i.title, i.author, a.summary_ko, a.raw_topic, a.tags,
+               a.created_at
+        FROM analyses AS a JOIN items AS i ON i.id = a.item_id
+        ORDER BY a.created_at DESC, a.item_id DESC
+        LIMIT ?
+        """,
+        (limit,),
+    )
+    return [AnalysisView(**{**dict(r), "tags": json.loads(r["tags"])}) for r in rows]

@@ -26,6 +26,7 @@ class Settings(BaseSettings):
 
     data_dir: Path = PROJECT_ROOT / "data"
     migrations_dir: Path = PROJECT_ROOT / "migrations"
+    prompts_dir: Path = PROJECT_ROOT / "prompts"
 
     # 비밀값: SecretStr 은 출력·로그에 '**********' 로 가려진다
     anthropic_api_key: SecretStr | None = Field(
@@ -53,6 +54,15 @@ class Settings(BaseSettings):
     whisper_model: str = "small"
     whisper_device: str = "cpu"
     whisper_compute_type: str = "int8"
+
+    # AI 분석(analyze). 모델을 바꾸면 아래 가격(100만 토큰당 달러)도 같이 바꾼다.
+    analyze_model: str = "claude-haiku-5-5"
+    analyze_effort: str = "low"  # low/medium/high: 생각을 얼마나 할지. 요약·분류는 low 로 충분
+    analyze_max_tokens: int = 4000  # 응답 하나의 최대 출력 토큰 (생각 토큰 포함)
+    analyze_prompt: str = "analyze_v1"  # prompts/ 안의 파일 이름
+    analyze_price_input_per_mtok: float = 0.10
+    analyze_price_output_per_mtok: float = 0.50
+    transcript_max_chars: int = 6000  # 자막은 앞부분만 보낸다
 
     @model_validator(mode="after")
     def _check_delay(self) -> Self:

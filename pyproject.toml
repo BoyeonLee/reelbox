@@ -7,6 +7,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "anthropic>=2.6.0",
     # faster-whisper 1.2.1 이 av 19 에서 없어진 open(metadata_errors=) 를 쓴다. 고쳐진 버전이 나오면 푼다.
     "av<19",
     "faster-whisper>=1.2.1",

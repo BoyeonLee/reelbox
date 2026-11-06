@@ -155,7 +155,9 @@ Go가 더 익숙하더라도, 이 프로젝트는 AI·영상 도구 때문에 Py
 }
 ```
 
-도구 호출(structured output)로 형식을 강제하고, Pydantic으로 검증한다. 실행 전에 `--dry-run`으로 항목 수와 예상 토큰 수를 보여준다. API 키는 `.env`의 `ANTHROPIC_API_KEY`.
+구조화 출력(`output_config.format`, JSON 스키마)으로 형식을 강제하고, 응답의 `stop_reason`(거절·길이 초과)을 먼저 확인한 뒤 Pydantic으로 검증한다. 형식 오류면 1회 다시 시도하고, 거절은 바로 `failed`로 둔다. API 키·모델 이름·잔액 문제(400/401/403/404)나 SDK 재시도 뒤에도 계속되는 429·5xx는 전체를 멈추고 항목은 `enriched`로 둔다. 실행 전에 `--dry-run`으로 항목 수와 예상 토큰 수(공식 토큰 세기 API로 최대 30개를 세고 나머지는 평균으로 추정)·예상 비용을 보여준다. 모델은 설정값(기본 `claude-haiku-5-5`, effort `low`). API 키는 `.env`의 `ANTHROPIC_API_KEY`.
+
+`analyses.prompt_version`에 프롬프트 버전을 기록한다. 버전이 바뀐 항목을 다시 분석하는 명령은 아직 만들지 않았다(Phase 3 결정: 필요할 때 추가). 결과는 `reelbox review --limit N`으로 표로 확인한다.
 
 ### 5-4. 주제 정리 (organize)
 
@@ -252,6 +254,7 @@ reelbox/
 | `reelbox import urls <파일>` | 링크 목록 가져오기 |
 | `reelbox enrich [--limit N] [--platform] [--captions-only]` | 메타·자막·받아쓰기 (`--captions-only`: 접속 없이 내보내기 캡션만으로) |
 | `reelbox analyze [--limit N] [--dry-run]` | AI 요약·태그 |
+| `reelbox review [--limit N]` | 최근 분석 결과를 표로 보기 (제목·요약·주제·태그) |
 | `reelbox organize [--full]` | 주제 정리 |
 | `reelbox index` | 임베딩·검색 색인 |
 | `reelbox run` | 위 4단계를 차례로 |

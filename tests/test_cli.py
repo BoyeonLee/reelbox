@@ -39,7 +39,6 @@ def test_init_then_status(settings: Settings) -> None:
     "args",
     [
         ["import", "youtube", "x"],
-        ["analyze", "--dry-run"],
         ["organize", "--full"],
         ["index"],
         ["run"],
