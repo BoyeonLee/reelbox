@@ -1,7 +1,9 @@
-"""Typer 명령 모음. Phase 3까지: init, status, import, sync youtube, enrich, analyze, review."""
+"""Typer 명령 모음. Phase 4까지: init, status, import, sync youtube, enrich, analyze, review,
+organize, index, search."""
 
 import logging
 import sqlite3
+from datetime import date
 from pathlib import Path
 from typing import Annotated
 
@@ -12,11 +14,15 @@ from rich.table import Table
 
 from reelbox import db
 from reelbox.ai import analyze as analyzer
+from reelbox.ai import organize as organizer
 from reelbox.ai.llm import AnthropicLLM, LLMFatalError, LLMUnavailableError
 from reelbox.config import Settings, get_settings
 from reelbox.enrich import runner
 from reelbox.enrich.transcribe import WhisperTranscriber
 from reelbox.importers import ImportReport, instagram, urllist, youtube
+from reelbox.search import index as indexer
+from reelbox.search import query as searcher
+from reelbox.search.embed import BgeM3Embedder
 from reelbox.urls import Platform
 from reelbox.ytdlp import CookieSource, YtdlpClient
 
@@ -42,7 +48,7 @@ def main(
         handlers=[RichHandler(console=console, show_path=False)],
     )
     # whisper 모델을 받을 때 나오는 요청 로그(HTTP Request: ...)는 -v 에서도 숨긴다
-    for noisy in ("httpx", "huggingface_hub"):
+    for noisy in ("httpx", "huggingface_hub", "sentence_transformers", "transformers"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
@@ -261,7 +267,7 @@ def enrich(
     _print_enrich_report(report)
 
 
-def _make_llm(settings: Settings) -> AnthropicLLM:
+def _require_api_key(settings: Settings) -> None:
     if settings.anthropic_api_key is None:
         console.print(
             "[red]Claude API 키가 없음.[/red] .env 에 ANTHROPIC_API_KEY=sk-ant-... 를 넣는다.\n"
@@ -269,11 +275,35 @@ def _make_llm(settings: Settings) -> AnthropicLLM:
             "구독과 따로 충전)."
         )
         raise typer.Exit(code=1)
+
+
+def _make_llm(settings: Settings) -> AnthropicLLM:
+    _require_api_key(settings)
     return AnthropicLLM(
         settings.analyze_model,
         effort=settings.analyze_effort,
         max_tokens=settings.analyze_max_tokens,
         api_key=settings.anthropic_api_key,
+    )
+
+
+def _make_organize_llm(settings: Settings) -> AnthropicLLM:
+    _require_api_key(settings)
+    return AnthropicLLM(
+        settings.organize_model,
+        effort=settings.organize_effort,
+        max_tokens=settings.organize_max_tokens,
+        api_key=settings.anthropic_api_key,
+    )
+
+
+def _make_embedder(settings: Settings) -> BgeM3Embedder:
+    """모델은 실제로 encode 할 때 불러온다 (CPU 에서 약 30초)."""
+    return BgeM3Embedder(
+        settings.embed_model,
+        device=settings.embed_device,
+        batch_size=settings.embed_batch_size,
+        max_seq_length=settings.embed_max_seq_length,
     )
 
 
@@ -364,30 +394,171 @@ def review(
     console.print(table)
 
 
+def _print_topics(conn: sqlite3.Connection) -> None:
+    topics = db.topic_counts(conn)
+    if not topics:
+        return
+    table = Table(title=f"주제 {len(topics)}개")
+    table.add_column("id", justify="right")
+    table.add_column("주제")
+    table.add_column("영상", justify="right")
+    table.add_column("설명", max_width=60)
+    for t in topics:
+        name = t.name + (" [cyan](고정)[/cyan]" if t.is_user_edited else "")
+        table.add_row(str(t.id), name, str(t.items), t.description or "")
+    console.print(table)
+
+
+def _print_organize_report(report: organizer.OrganizeReport, settings: Settings) -> None:
+    title = "전체 정리" if report.mode == "full" else "새 항목 배정"
+    table = Table(title=f"주제 정리 결과 ({title})")
+    table.add_column("항목")
+    table.add_column("값", justify="right")
+    if report.mode == "full":
+        table.add_row("새로 만든 주제", str(report.topics_created))
+        table.add_row("대응표로 배정", str(report.mapped))
+    table.add_row("같은 raw_topic 주제 재사용", str(report.reused))
+    table.add_row("후보 중 Claude 가 고름", str(report.by_llm))
+    if report.no_fit:
+        table.add_row("[yellow]어울리는 후보 없음 → 가장 가까운 주제[/yellow]", str(report.no_fit))
+    if report.left:
+        table.add_row("[red]주제를 못 받음 (다음에 다시)[/red]", str(report.left))
+    if report.embedded:
+        table.add_row("새로 계산한 임베딩", str(report.embedded))
+    table.add_row(
+        "사용 토큰 (입력 / 출력)",
+        f"{report.usage.input_tokens:,} / {report.usage.output_tokens:,}",
+    )
+    # 가격 설정은 analyze 모델 기준이라 organize 모델이 다르면 대략값이다
+    table.add_row("비용 (대략)", f"약 ${analyzer.estimate_cost(settings, report.usage):.4f}")
+    console.print(table)
+    if report.stopped:
+        console.print(f"[red]주제 정리를 멈춤[/red] {report.stopped}")
+    if report.no_fit and report.no_fit * 5 >= report.assigned:
+        console.print(
+            "어울리는 주제가 없는 항목이 많음. "
+            "[bold]reelbox organize --full[/bold] 로 다시 묶어 볼 것"
+        )
+
+
 @app.command()
 def organize(
     full: Annotated[bool, typer.Option("--full", help="처음부터 다시 묶기")] = False,
+    limit: Annotated[
+        int | None, typer.Option("--limit", help="새 항목 배정에서 처리할 최대 항목 수")
+    ] = None,
 ) -> None:
-    """주제 정리."""
-    _not_implemented("organize")
+    """주제 정리. 주제가 없으면 전체 정리, 있으면 새 항목만 기존 주제에 배정."""
+    settings = get_settings()
+    llm = _make_organize_llm(settings)
+    embedder = _make_embedder(settings)
+    conn = _open_db(settings)
+    try:
+        with console.status("주제 정리 준비 중...") as spinner:
+            report = organizer.organize(
+                conn,
+                settings,
+                llm,
+                embedder,
+                full=full,
+                limit=limit,
+                on_status=lambda msg: spinner.update(msg),
+            )
+        _print_organize_report(report, settings)
+        _print_topics(conn)
+    finally:
+        conn.close()
 
 
 @app.command()
-def index() -> None:
+def index(limit: LimitOpt = None) -> None:
     """임베딩·검색 색인."""
-    _not_implemented("index")
+    settings = get_settings()
+    embedder = _make_embedder(settings)
+    conn = _open_db(settings)
+    try:
+        with console.status("색인 준비 중 (처음엔 모델을 불러오느라 30초쯤 걸림)...") as spinner:
+
+            def on_progress(done: int, total: int) -> None:
+                spinner.update(f"임베딩 계산 중 {done}/{total}")
+
+            report = indexer.index_items(
+                conn, settings, embedder, limit=limit, on_progress=on_progress
+            )
+    finally:
+        conn.close()
+    table = Table(title="색인 결과")
+    table.add_column("항목")
+    table.add_column("개수", justify="right")
+    table.add_row("[green]indexed[/green]", str(report.indexed))
+    table.add_row("  └ 새로 계산한 임베딩", str(report.embedded))
+    table.add_row("  └ organize 가 계산해 둔 임베딩 재사용", str(report.reused))
+    table.add_row("비슷한 영상을 계산한 항목", str(report.similar_items))
+    console.print(table)
+
+
+SEARCH_SUMMARY_CHARS = 90  # 터미널 표가 너무 길어지지 않게
+_LIST_KO = {"keyword": "키워드", "short": "짧은 단어", "vector": "의미"}
+
+
+@app.command()
+def search(
+    query: Annotated[str, typer.Argument(help="검색어")],
+    limit: Annotated[int, typer.Option("--limit", help="보여줄 개수")] = 10,
+    platform: Annotated[Platform | None, typer.Option(help="instagram 또는 youtube")] = None,
+    topic: Annotated[str | None, typer.Option(help="주제 이름 또는 id")] = None,
+    since: Annotated[str | None, typer.Option(help="이날 이후 저장한 것 (YYYY-MM-DD)")] = None,
+    until: Annotated[str | None, typer.Option(help="이날까지 저장한 것 (YYYY-MM-DD)")] = None,
+    favorite: Annotated[bool, typer.Option("--favorite", help="즐겨찾기만")] = False,
+    keyword_only: Annotated[
+        bool, typer.Option("--keyword-only", help="의미 검색 없이 키워드만 (모델을 안 불러서 빠름)")
+    ] = False,
+) -> None:
+    """터미널에서 검색 (확인용). 키워드와 의미 검색 결과를 RRF 로 합친다."""
+    try:
+        filters = searcher.SearchFilters(
+            platform=platform,
+            topic=topic,
+            since=date.fromisoformat(since) if since else None,
+            until=date.fromisoformat(until) if until else None,
+            favorite=favorite,
+        )
+    except ValueError as exc:
+        console.print(f"[red]날짜 형식이 틀림 (YYYY-MM-DD):[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    settings = get_settings()
+    embedder = None if keyword_only else _make_embedder(settings)
+    conn = _open_db(settings)
+    try:
+        message = "검색 중..." if keyword_only else "검색 중 (모델 불러오느라 30초쯤 걸림)..."
+        with console.status(message):
+            hits = searcher.search(conn, query, embedder=embedder, filters=filters, limit=limit)
+    finally:
+        conn.close()
+    if not hits:
+        console.print("결과 없음. 색인이 비었으면 먼저 [bold]reelbox index[/bold]")
+        return
+    table = Table(title=f"'{query}' 검색 결과 {len(hits)}개", show_lines=True)
+    table.add_column("#", justify="right")
+    table.add_column("제목 / 작성자", max_width=30)
+    table.add_column("주제", max_width=12)
+    table.add_column("요약", max_width=50)
+    table.add_column("걸린 곳 (순위)", max_width=18)
+    for n, h in enumerate(hits, start=1):
+        head = h.title or "(제목 없음)"
+        head += f"\n[dim]{h.author or ''} · {h.platform}[/dim]\n[link={h.url}]{h.url}[/link]"
+        where = "\n".join(f"{_LIST_KO.get(k, k)} {r}위" for k, r in h.ranks.items())
+        summary = h.summary_ko or ""
+        if len(summary) > SEARCH_SUMMARY_CHARS:
+            summary = summary[:SEARCH_SUMMARY_CHARS] + "…"
+        table.add_row(str(n), head, h.topic or "", summary, where)
+    console.print(table)
 
 
 @app.command()
 def run() -> None:
     """enrich → analyze → organize → index 를 차례로."""
     _not_implemented("run")
-
-
-@app.command()
-def search(query: Annotated[str, typer.Argument(help="검색어")]) -> None:
-    """터미널에서 검색 (확인용)."""
-    _not_implemented("search")
 
 
 @app.command()

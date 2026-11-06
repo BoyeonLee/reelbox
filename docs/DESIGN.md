@@ -51,7 +51,7 @@ Reelbox는 내가 이미 저장한 인스타그램 릴스와 유튜브 쇼츠를
 | 메타·자막·오디오 | yt-dlp + ffmpeg | 유튜브·인스타 모두 지원, 영상 다운로드 없이 정보만 가능 |
 | 음성 받아쓰기 | faster-whisper (로컬) | 자막 없는 쇼츠·릴스 대비. 무료, CPU로도 동작 |
 | 요약·분류 | Claude API (Haiku 등급 모델) | 한국어 품질 좋고 저렴. 인터페이스로 감싸서 다른 모델로 교체 가능 |
-| 임베딩 | BAAI/bge-m3 (로컬, sentence-transformers) | 다국어·한국어 의미 검색에 강함, 무료 |
+| 임베딩 | BAAI/bge-m3 (로컬, sentence-transformers + CPU 전용 torch) | 다국어·한국어 의미 검색에 강함, 무료. torch 는 pytorch CPU 인덱스에서 받는다(CUDA 빌드는 수 GB 더 큼) |
 | 웹 | FastAPI(JSON API) + 정적 화면(HTML + Alpine.js + Tailwind CDN) | 빌드 없는 화면 하나를 PC와 보기 전용 사이트가 같이 씀. 데이터만 PC API 또는 스냅샷에서 가져옴 |
 | 휴대폰 앱화 | PWA (manifest + service worker) | 홈 화면 아이콘, 전체 화면. 앱스토어 등록 불필요 |
 | 외부 접속 | Tailscale | 포트 개방 없이 내 휴대폰→PC 연결, HTTPS 주소도 발급 |
@@ -105,6 +105,7 @@ Go가 더 익숙하더라도, 이 프로젝트는 AI·영상 도구 때문에 Py
 | `items_fts` (FTS5, trigram) | title, description, transcript, summary, tags | 키워드 검색용 |
 | `user_meta` | item\_id, favorite, note, hidden\_at, deleted\_at | 내가 휴대폰에서 남기는 표시·메모, 숨김·휴지통 시각 |
 | `fetch_log` | id, platform, item\_id, fetched\_at | 보강 단계가 플랫폼에 요청한 기록. 인스타 일일 한도(최근 24시간 개수)를 센다 (Phase 2, `002_fetch_log.sql`) |
+| `item_similar` | item\_id, similar\_id, rank, score | 영상마다 미리 계산한 "비슷한 영상" 5개. index 때마다 전부 다시 계산 (Phase 4, `003_similar.sql`) |
 
 ### status 흐름
 
@@ -163,15 +164,20 @@ Go가 더 익숙하더라도, 이 프로젝트는 AI·영상 도구 때문에 Py
 
 비유: 직원들이 메모에 제멋대로 붙인 라벨(raw\_topic)을 팀장이 모아보고 바인더 10\~20개로 정리하는 것.
 
-1. 모든 raw\_topic과 개수를 모아 Claude에 보내 **대주제 10\~20개(필요하면 소주제)** 와 "raw\_topic → 주제" 대응표를 받는다.
-2. 내가 수정한 주제(`is_user_edited`)는 고정값으로 함께 보내 유지한다.
-3. 새 항목은 전체 재정리 없이 기존 주제에 배정한다(임베딩이 가장 가까운 주제 후보 3개 → Claude가 선택). `reelbox organize --full`은 처음부터 다시 묶는다.
+1. 모든 raw\_topic과 개수를 모아 Claude에 보내 **대주제 10\~20개** 를 받고, raw\_topic을 150개씩 다시 보내 "raw\_topic → 주제" 대응표를 받는다. 한 번에 다 받으면 출력이 너무 길어 잘릴 수 있어서 두 단계로 나눈다(Phase 4 결정). LLM 호출이 모두 끝난 뒤 한 트랜잭션으로 쓰므로 중간에 실패하면 아무것도 바뀌지 않는다.
+2. 내가 수정한 주제(`is_user_edited`)는 고정값으로 함께 보내 유지한다. 자동 주제는 지우고 새로 만든다.
+3. 새 항목은 전체 재정리 없이 기존 주제에 배정한다. 같은 raw\_topic의 항목이 이미 들어간 주제가 있으면 그대로 쓰고(LLM 안 부름), 아니면 임베딩이 가장 가까운 주제 후보 3개 → Claude가 선택(30개씩 묶어서). "어울리는 후보 없음"이면 가장 가까운 후보에 넣고 개수를 알려준다. 많으면 `--full`을 권한다. `reelbox organize --full`은 처음부터 다시 묶는다. 주제가 하나도 없으면 `--full`이 아니어도 전체 정리를 한다.
+4. organize는 index보다 먼저 돌므로, 새 항목의 임베딩이 없으면 그 자리에서 계산해 `embeddings`에 저장하고 index가 다시 쓴다.
+5. 소주제(parent\_id)는 아직 만들지 않는다(Phase 4 결정: 필요할 때 추가). 모델은 설정 `organize_model`(기본 Haiku, effort `medium`). 프롬프트는 `prompts/organize_v1.md`(대주제·대응표), `prompts/organize_assign_v1.md`(새 항목 배정).
 
 ### 5-5. 색인과 검색 (index / search)
 
-- 색인: bge-m3로 "제목 + 요약 + 태그 + 자막 앞부분"을 벡터로 만들고, FTS5에 텍스트를 넣는다.
-- 검색: **키워드(FTS5 BM25) 결과와 의미(벡터) 결과를 RRF로 합친다.** 비유하면 도서관 사서 두 명(단어를 정확히 찾는 사람, 뜻으로 찾는 사람)의 추천 순위를 합산하는 것.
-- 필터: 플랫폼, 주제, 저장 기간, 즐겨찾기. 색인 때 영상마다 "비슷한 영상" 5개를 미리 계산해 둔다(상세 화면과 보기 전용 사이트에서 사용).
+- 색인: `analyzed` 항목을 bge-m3로 "제목 + 요약 + 태그 + 자막 앞부분(1,000자)"을 벡터로 만들고, FTS5에 텍스트를 넣은 뒤 `indexed`로 넘긴다. CPU에서 모델을 불러오는 데 약 30초, 항목당 약 1초.
+- 검색: **키워드(FTS5 BM25) 결과와 의미(벡터) 결과를 RRF로 합친다.** 비유하면 도서관 사서 두 명(단어를 정확히 찾는 사람, 뜻으로 찾는 사람)의 추천 순위를 합산하는 것. 점수 대신 순위만 써서 각 목록의 r등에 1/(60+r)점을 주고 더한다.
+  - trigram 색인은 3글자보다 짧은 검색어를 찾지 못한다. 한국어는 2음절 단어("김밥", "간식")가 많아서, 2글자 이하 단어는 LIKE로 따로 찾아 RRF의 세 번째 목록으로 합친다(Phase 4 결정).
+  - 벡터 검색은 필터를 먼저 걸고 전체 거리를 계산한다(항목이 수천 개 이하라 충분히 빠름). KNN 후 필터는 결과가 빠질 수 있다.
+- 필터: 플랫폼, 주제, 저장 기간, 즐겨찾기. 숨김·삭제 항목은 항상 뺀다. 색인 때 영상마다 "비슷한 영상" 5개를 미리 계산해 `item_similar`에 둔다(상세 화면과 보기 전용 사이트에서 사용, 숨김·삭제 제외).
+- `reelbox search "..." [--platform] [--topic] [--since] [--until] [--favorite] [--keyword-only]`. `--keyword-only`는 모델을 불러오지 않아 빠르다.
 
 ## 6. 웹 UI (휴대폰 우선)
 
@@ -255,8 +261,8 @@ reelbox/
 | `reelbox enrich [--limit N] [--platform] [--captions-only]` | 메타·자막·받아쓰기 (`--captions-only`: 접속 없이 내보내기 캡션만으로) |
 | `reelbox analyze [--limit N] [--dry-run]` | AI 요약·태그 |
 | `reelbox review [--limit N]` | 최근 분석 결과를 표로 보기 (제목·요약·주제·태그) |
-| `reelbox organize [--full]` | 주제 정리 |
-| `reelbox index` | 임베딩·검색 색인 |
+| `reelbox organize [--full] [--limit N]` | 주제 정리 (`--limit`은 새 항목 배정에만) |
+| `reelbox index [--limit N]` | 임베딩·검색 색인 |
 | `reelbox run` | 위 4단계를 차례로 |
 | `reelbox search "검색어"` | 터미널에서 검색 (확인용) |
 | `reelbox status` | 상태별 개수, 최근 실패 |
@@ -268,6 +274,8 @@ reelbox/
 ## 8. 단계별 개발 계획
 
 한 번에 한 단계만 진행하고, **완료 기준을 내 눈으로 확인한 뒤** 다음으로 넘어간다. Phase 4가 끝나면 PC 터미널에서는 이미 쓸 수 있고, Phase 5부터 휴대폰으로 옮겨간다.
+
+**데이터 범위 (2026-11-07 결정):** 포트폴리오로 빨리 완성하는 것이 우선이라, 저장한 영상 전부가 아니라 **약 100개(유튜브·인스타 반반)만 보강·분석**하고 기능 구현을 진행한다. 완료 기준의 "주제 수"·"검색어" 확인도 이 100개로 한다. 나머지는 모든 단계가 멱등이라 나중에 같은 명령을 다시 돌리면 이어서 처리된다.
 
 | 단계 | 만드는 것 | 완료 기준 |
 | --- | --- | --- |

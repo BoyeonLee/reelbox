@@ -11,11 +11,14 @@ dependencies = [
     # faster-whisper 1.2.1 이 av 19 에서 없어진 open(metadata_errors=) 를 쓴다. 고쳐진 버전이 나오면 푼다.
     "av<19",
     "faster-whisper>=1.2.1",
+    "numpy>=2.5.4",
     "pillow>=13.0.0",
     "pydantic>=2.14.2",
     "pydantic-settings>=2.16.2",
     "rich>=15.0.0",
+    "sentence-transformers>=6.2.0",
     "sqlite-vec>=0.1.9",
+    "torch>=2.15.0",
     "typer>=0.27.3",
     "yt-dlp>=2026.10.26",
 ]
@@ -44,3 +47,12 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+
+# torch 는 CPU 전용 빌드를 쓴다 (기본 PyPI 빌드는 CUDA 라이브러리까지 받아 수 GB 더 큼)
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }

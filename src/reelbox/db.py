@@ -4,6 +4,8 @@ import json
 import logging
 import re
 import sqlite3
+import struct
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
@@ -439,3 +441,287 @@ def recent_analyses(conn: sqlite3.Connection, limit: int) -> list[AnalysisView]:
         (limit,),
     )
     return [AnalysisView(**{**dict(r), "tags": json.loads(r["tags"])}) for r in rows]
+
+
+# --- 공통: 목록·검색·주제에 보여줄 항목 ---
+
+# 숨김·삭제(휴지통) 항목과 영구 삭제된 항목을 뺀다 (DESIGN.md 4장 "숨기기와 삭제").
+# items 별칭이 i 인 쿼리의 WHERE 에 붙여 쓴다.
+VISIBLE_SQL = """i.status != 'deleted' AND NOT EXISTS (
+    SELECT 1 FROM user_meta AS um
+    WHERE um.item_id = i.id AND (um.hidden_at IS NOT NULL OR um.deleted_at IS NOT NULL))"""
+
+
+def vector_to_blob(vector: Sequence[float]) -> bytes:
+    """sqlite-vec 이 받는 형식: float32 를 이어 붙인 바이트."""
+    return struct.pack(f"{len(vector)}f", *vector)
+
+
+def blob_to_vector(blob: bytes) -> list[float]:
+    return list(struct.unpack(f"{len(blob) // 4}f", blob))
+
+
+# --- 임베딩 (organize 와 index 가 같이 쓴다) ---
+
+
+class EmbedInput(BaseModel):
+    """임베딩용 텍스트를 만들 재료. 색인 단계는 FTS 에 넣을 설명도 같이 쓴다."""
+
+    id: int
+    title: str | None
+    description: str | None
+    transcript_text: str | None
+    summary_ko: str | None
+    raw_topic: str | None
+    tags: list[str]
+
+
+_EMBED_INPUT_SQL = """
+    SELECT i.id, i.title, i.description, t.text AS transcript_text,
+           a.summary_ko, a.raw_topic, a.tags
+    FROM items AS i
+    JOIN analyses AS a ON a.item_id = i.id
+    LEFT JOIN transcripts AS t ON t.item_id = i.id
+"""
+
+
+def _embed_input(row: sqlite3.Row) -> EmbedInput:
+    return EmbedInput(**{**dict(row), "tags": json.loads(row["tags"])})
+
+
+def load_vectors(conn: sqlite3.Connection, item_ids: list[int]) -> dict[int, list[float]]:
+    """저장된 임베딩. 없는 항목은 결과에 없다."""
+    if not item_ids:
+        return {}
+    marks = ", ".join("?" for _ in item_ids)
+    rows = conn.execute(
+        f"SELECT item_id, vector FROM embeddings WHERE item_id IN ({marks})", item_ids
+    )
+    return {r["item_id"]: blob_to_vector(r["vector"]) for r in rows}
+
+
+def save_vectors(conn: sqlite3.Connection, vectors: dict[int, list[float]]) -> None:
+    """임베딩을 넣는다(있으면 바꾼다). vec0 테이블은 ON CONFLICT 를 몰라서 지우고 넣는다."""
+    with conn:
+        for item_id, vector in vectors.items():
+            conn.execute("DELETE FROM embeddings WHERE item_id = ?", (item_id,))
+            conn.execute(
+                "INSERT INTO embeddings (item_id, vector) VALUES (?, ?)",
+                (item_id, vector_to_blob(vector)),
+            )
+
+
+# --- 색인(index) 단계 ---
+
+
+def index_candidates(conn: sqlite3.Connection, *, limit: int | None) -> list[EmbedInput]:
+    """색인할 차례인 항목 (analyzed). 숨김·삭제 항목도 색인은 해 둔다 (검색할 때 뺀다)."""
+    rows = conn.execute(
+        _EMBED_INPUT_SQL + "WHERE i.status = 'analyzed' ORDER BY i.id LIMIT ?",
+        (-1 if limit is None else limit,),
+    )
+    return [_embed_input(r) for r in rows]
+
+
+def save_index(conn: sqlite3.Connection, item: EmbedInput) -> None:
+    """FTS 에 넣고(있으면 바꾸고) indexed 로 바꾼다. 임베딩은 먼저 save_vectors 로 넣는다."""
+    with conn:
+        conn.execute("DELETE FROM items_fts WHERE rowid = ?", (item.id,))
+        conn.execute(
+            """
+            INSERT INTO items_fts (rowid, title, description, transcript, summary, tags)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                item.id,
+                item.title or "",
+                item.description or "",
+                item.transcript_text or "",
+                item.summary_ko or "",
+                " ".join(item.tags),
+            ),
+        )
+        conn.execute("UPDATE items SET status = 'indexed', error = NULL WHERE id = ?", (item.id,))
+
+
+def indexed_vectors(conn: sqlite3.Connection) -> dict[int, list[float]]:
+    """비슷한 영상 계산에 쓸, 보여줄 수 있는 색인 항목 전부의 임베딩."""
+    rows = conn.execute(
+        f"""
+        SELECT e.item_id, e.vector
+        FROM embeddings AS e JOIN items AS i ON i.id = e.item_id
+        WHERE i.status = 'indexed' AND {VISIBLE_SQL}
+        ORDER BY e.item_id
+        """
+    )
+    return {r["item_id"]: blob_to_vector(r["vector"]) for r in rows}
+
+
+def replace_similar(conn: sqlite3.Connection, rows: list[tuple[int, int, int, float]]) -> None:
+    """item_similar 를 통째로 바꾼다. rows = (item_id, similar_id, rank, score)."""
+    with conn:
+        conn.execute("DELETE FROM item_similar")
+        conn.executemany(
+            "INSERT INTO item_similar (item_id, similar_id, rank, score) VALUES (?, ?, ?, ?)",
+            rows,
+        )
+
+
+def similar_ids(conn: sqlite3.Connection, item_id: int) -> list[int]:
+    rows = conn.execute(
+        "SELECT similar_id FROM item_similar WHERE item_id = ? ORDER BY rank", (item_id,)
+    )
+    return [r["similar_id"] for r in rows]
+
+
+# --- 주제 정리(organize) 단계 ---
+
+
+class Topic(BaseModel):
+    id: int
+    name: str
+    description: str | None
+    is_user_edited: bool
+
+
+class TopicCount(Topic):
+    items: int  # 보여줄 수 있는 항목 수
+
+
+def list_topics(conn: sqlite3.Connection) -> list[Topic]:
+    rows = conn.execute("SELECT id, name, description, is_user_edited FROM topics ORDER BY id")
+    return [Topic(**dict(r)) for r in rows]
+
+
+def topic_counts(conn: sqlite3.Connection) -> list[TopicCount]:
+    """주제별 항목 수 (대표 주제 기준, 숨김·삭제 제외). 많은 순."""
+    rows = conn.execute(
+        f"""
+        SELECT t.id, t.name, t.description, t.is_user_edited,
+               (SELECT COUNT(*) FROM item_topics AS it JOIN items AS i ON i.id = it.item_id
+                WHERE it.topic_id = t.id AND it.is_primary = 1 AND {VISIBLE_SQL}) AS items
+        FROM topics AS t
+        ORDER BY items DESC, t.id
+        """
+    )
+    return [TopicCount(**dict(r)) for r in rows]
+
+
+def raw_topic_counts(conn: sqlite3.Connection) -> list[tuple[str, int]]:
+    """분석된(보여줄 수 있는) 항목의 raw_topic 과 개수. 많은 순."""
+    rows = conn.execute(
+        f"""
+        SELECT a.raw_topic, COUNT(*) AS n
+        FROM analyses AS a JOIN items AS i ON i.id = a.item_id
+        WHERE i.status IN ('analyzed', 'indexed') AND a.raw_topic IS NOT NULL AND {VISIBLE_SQL}
+        GROUP BY a.raw_topic
+        ORDER BY n DESC, a.raw_topic
+        """
+    )
+    return [(r["raw_topic"], r["n"]) for r in rows]
+
+
+def unassigned_items(conn: sqlite3.Connection, *, limit: int | None) -> list[EmbedInput]:
+    """분석은 끝났는데 주제가 없는 (보여줄 수 있는) 항목."""
+    rows = conn.execute(
+        _EMBED_INPUT_SQL
+        + f"""
+        WHERE i.status IN ('analyzed', 'indexed') AND {VISIBLE_SQL}
+          AND NOT EXISTS (SELECT 1 FROM item_topics AS it WHERE it.item_id = i.id)
+        ORDER BY i.id
+        LIMIT ?
+        """,
+        (-1 if limit is None else limit,),
+    )
+    return [_embed_input(r) for r in rows]
+
+
+def raw_topic_assignments(conn: sqlite3.Connection) -> dict[str, int]:
+    """raw_topic → 그 raw_topic 항목들이 가장 많이 들어간 대표 주제. 새 항목 배정에 재사용한다."""
+    rows = conn.execute(
+        """
+        SELECT a.raw_topic, it.topic_id, COUNT(*) AS n
+        FROM analyses AS a JOIN item_topics AS it ON it.item_id = a.item_id AND it.is_primary = 1
+        WHERE a.raw_topic IS NOT NULL
+        GROUP BY a.raw_topic, it.topic_id
+        ORDER BY n ASC, it.topic_id DESC
+        """
+    )
+    # 개수 오름차순으로 덮어쓰므로 마지막(가장 많은) 주제가 남는다
+    return {r["raw_topic"]: r["topic_id"] for r in rows}
+
+
+def topic_raw_topics(conn: sqlite3.Connection, per_topic: int) -> dict[int, list[str]]:
+    """주제마다 들어 있는 raw_topic 몇 개 (많은 순). 주제 임베딩 텍스트에 쓴다."""
+    result: dict[int, list[str]] = {}
+    rows = conn.execute(
+        """
+        SELECT it.topic_id, a.raw_topic, COUNT(*) AS n
+        FROM item_topics AS it JOIN analyses AS a ON a.item_id = it.item_id
+        WHERE it.is_primary = 1 AND a.raw_topic IS NOT NULL
+        GROUP BY it.topic_id, a.raw_topic
+        ORDER BY it.topic_id, n DESC, a.raw_topic
+        """
+    )
+    for r in rows:
+        names = result.setdefault(r["topic_id"], [])
+        if len(names) < per_topic:
+            names.append(r["raw_topic"])
+    return result
+
+
+class NewTopic(BaseModel):
+    name: str
+    description: str
+
+
+def replace_topics(
+    conn: sqlite3.Connection,
+    new_topics: list[NewTopic],
+    raw_to_topic: dict[str, int | str],
+) -> dict[str, int]:
+    """전체 재정리 결과를 한 트랜잭션으로 쓴다.
+
+    - 자동 주제(is_user_edited = 0)는 지우고 new_topics 를 새로 만든다.
+    - 내가 고친 주제는 그대로 둔다.
+    - 모든 주제 연결을 지운 뒤 raw_to_topic 대로 다시 잇는다. 값이 int 면 기존(고정) 주제 id,
+      str 이면 new_topics 의 이름이다.
+    돌려주는 값: 주제 이름 → id (새로 만든 것과 고정 주제 모두).
+    """
+    with conn:
+        conn.execute("DELETE FROM item_topics")
+        conn.execute("DELETE FROM topics WHERE is_user_edited = 0")
+        name_to_id = {t.name: t.id for t in list_topics(conn)}
+        for t in new_topics:
+            cur = conn.execute(
+                "INSERT INTO topics (name, description) VALUES (?, ?)", (t.name, t.description)
+            )
+            name_to_id[t.name] = cur.lastrowid  # type: ignore[assignment]
+        resolved = {
+            raw: (target if isinstance(target, int) else name_to_id[target])
+            for raw, target in raw_to_topic.items()
+        }
+        rows = conn.execute(
+            f"""
+            SELECT i.id, a.raw_topic
+            FROM items AS i JOIN analyses AS a ON a.item_id = i.id
+            WHERE i.status IN ('analyzed', 'indexed') AND {VISIBLE_SQL}
+            """
+        ).fetchall()
+        conn.executemany(
+            "INSERT INTO item_topics (item_id, topic_id, is_primary) VALUES (?, ?, 1)",
+            [(r["id"], resolved[r["raw_topic"]]) for r in rows if r["raw_topic"] in resolved],
+        )
+    return name_to_id
+
+
+def assign_topics(conn: sqlite3.Connection, assignments: dict[int, int]) -> None:
+    """항목 id → 대표 주제 id. 이미 대표 주제가 있으면 바꾼다."""
+    with conn:
+        for item_id, topic_id in assignments.items():
+            conn.execute("DELETE FROM item_topics WHERE item_id = ? AND is_primary = 1", (item_id,))
+            conn.execute(
+                "INSERT OR REPLACE INTO item_topics (item_id, topic_id, is_primary)"
+                " VALUES (?, ?, 1)",
+                (item_id, topic_id),
+            )

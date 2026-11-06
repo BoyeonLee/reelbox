@@ -64,6 +64,23 @@ class Settings(BaseSettings):
     analyze_price_output_per_mtok: float = 0.50
     transcript_max_chars: int = 6000  # 자막은 앞부분만 보낸다
 
+    # 주제 정리(organize). 주제를 짜는 일은 요약보다 판단이 많아 effort 를 한 단계 올린다.
+    organize_model: str = "claude-haiku-5-5"
+    organize_effort: str = "medium"
+    organize_max_tokens: int = 16000  # 이보다 크면 SDK 가 스트리밍을 요구한다
+    organize_prompt: str = "organize_v1"  # 대주제 만들기 + raw_topic 대응표
+    organize_assign_prompt: str = "organize_assign_v1"  # 새 항목을 기존 주제에 배정
+    organize_map_batch: int = Field(default=150, ge=1)  # 대응표를 한 번에 받을 raw_topic 수
+    organize_assign_batch: int = Field(default=30, ge=1)  # 배정을 한 번에 부탁할 항목 수
+
+    # 색인(index)·검색(search). bge-m3 는 처음 쓸 때 ~/.cache/huggingface 에 약 2.2GB 받는다.
+    embed_model: str = "BAAI/bge-m3"
+    embed_device: str = "cpu"
+    embed_batch_size: int = Field(default=16, ge=1)
+    embed_max_seq_length: int = 512  # 토큰. 길수록 느리다 (CPU 에서 512 면 항목당 약 1초)
+    index_transcript_chars: int = 1000  # 임베딩에 넣을 자막 앞부분 글자 수
+    similar_count: int = 5  # 영상마다 미리 계산해 둘 "비슷한 영상" 수
+
     @model_validator(mode="after")
     def _check_delay(self) -> Self:
         if self.instagram_delay_max_sec < self.instagram_delay_min_sec:

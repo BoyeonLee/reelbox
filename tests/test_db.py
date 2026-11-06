@@ -23,8 +23,8 @@ EXPECTED_TABLES = {
 
 def test_init_creates_all_tables(settings: Settings) -> None:
     result = db.init_db(settings)
-    assert result.applied == ["001_init.sql", "002_fetch_log.sql"]
-    assert result.version == 2
+    assert result.applied == ["001_init.sql", "002_fetch_log.sql", "003_similar.sql"]
+    assert result.version == 3
     assert settings.db_path.is_file()
 
     conn = db.connect(settings.db_path)
@@ -37,7 +37,7 @@ def test_init_is_idempotent(settings: Settings) -> None:
     db.init_db(settings)
     again = db.init_db(settings)
     assert again.applied == []
-    assert again.version == 2
+    assert again.version == 3
 
 
 def test_failed_migration_rolls_back(tmp_path: Path) -> None:

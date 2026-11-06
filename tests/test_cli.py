@@ -39,10 +39,7 @@ def test_init_then_status(settings: Settings) -> None:
     "args",
     [
         ["import", "youtube", "x"],
-        ["organize", "--full"],
-        ["index"],
         ["run"],
-        ["search", "파스타"],
         ["serve"],
         ["purge"],
         ["publish", "--dry-run"],
