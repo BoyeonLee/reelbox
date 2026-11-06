@@ -39,10 +39,31 @@ def _entries(info: dict[str, Any]) -> list[dict[str, Any]]:
     return [e for e in info.get("entries") or [] if isinstance(e, dict)]
 
 
+# 캐러셀 안의 영상 정보에 게시물 정보에서 복사해 줄 키 (아래 audio_source 참고)
+_INHERITED_KEYS = (
+    "extractor",
+    "extractor_key",
+    "webpage_url",
+    "webpage_url_basename",
+    "webpage_url_domain",
+    "original_url",
+)
+
+
 def audio_source(info: dict[str, Any]) -> dict[str, Any] | None:
-    """받아쓰기할 오디오가 있는 정보. 캐러셀이면 첫 번째 영상, 사진만 있으면 None."""
+    """받아쓰기할 오디오가 있는 정보. 캐러셀이면 첫 번째 영상, 사진만 있으면 None.
+
+    캐러셀이면 게시물 정보의 extractor 등을 영상 정보에 채워 넣는다(이미 있는 값은 그대로).
+    extract(process=False)는 게시물(바깥)에만 이 키를 붙이는데, download_audio 가 영상 정보를
+    yt-dlp 에 넘기면 yt-dlp 는 info['extractor'] 가 있다고 보고 읽어서 KeyError 가 난다.
+    """
     if info.get("_type") == "playlist":
-        return next((e for e in _entries(info) if _is_video(e)), None)
+        entry = next((e for e in _entries(info) if _is_video(e)), None)
+        if entry is not None:
+            for key in _INHERITED_KEYS:
+                if key in info:
+                    entry.setdefault(key, info[key])
+        return entry
     return info if _is_video(info) else None
 
 

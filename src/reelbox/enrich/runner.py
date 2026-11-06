@@ -131,6 +131,9 @@ _BLOCK_SIGNS = (
 )
 # 삭제·비공개: unavailable 로 두고 다시 시도하지 않는다.
 _UNAVAILABLE_SIGNS = (
+    # 인스타 연령·민감 콘텐츠 제한: 내 계정으로는 볼 수 없어서 다시 시도해도 같다
+    "isn't available to everyone",
+    "can't be seen by certain audiences",
     "video unavailable",
     "this video is not available",
     "this video has been removed",

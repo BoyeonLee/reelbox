@@ -462,3 +462,11 @@ def test_captions_only_marks_items_with_caption_without_network(env: Env) -> Non
     assert env.transcript(with_caption)["source"] == "none"
     assert env.item(without)["status"] == "imported"
     assert env.log == []
+
+
+def test_classify_instagram_audience_restriction_as_unavailable() -> None:
+    message = (
+        "ERROR: [Instagram] DeWgkk4SoC4: This content isn't available to everyone: "
+        "It can't be seen by certain audiences."
+    )
+    assert classify(DownloadError(message)) == "unavailable"

@@ -125,3 +125,20 @@ def test_save_thumbnail_does_not_upscale(tmp_path: Path) -> None:
 
 def test_thumbnail_relpath() -> None:
     assert thumbnail_relpath("instagram", "ABC") == "thumbs/instagram_ABC.webp"
+
+
+def test_carousel_audio_source_inherits_extractor_from_post() -> None:
+    """yt-dlp 는 넘겨받은 정보에 extractor 가 있다고 보고 읽는다 (없으면 KeyError)."""
+    video = {"id": "b", "formats": [{"url": "https://cdn/2.mp4"}], "webpage_url": "https://own"}
+    info = {
+        "_type": "playlist",
+        "extractor": "Instagram",
+        "extractor_key": "Instagram",
+        "webpage_url": "https://www.instagram.com/p/Dd0xeAfGAmH/",
+        "entries": [video],
+    }
+    entry = audio_source(info)
+    assert entry is video
+    assert entry["extractor"] == "Instagram"
+    assert entry["extractor_key"] == "Instagram"
+    assert entry["webpage_url"] == "https://own"  # 이미 있는 값은 덮어쓰지 않음
