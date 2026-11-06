@@ -1,4 +1,4 @@
-"""Typer 명령 모음. Phase 1까지: init, status, import instagram/urls, sync youtube."""
+"""Typer 명령 모음. Phase 2까지: init, status, import instagram/urls, sync youtube, enrich."""
 
 import logging
 import sqlite3
@@ -12,7 +12,11 @@ from rich.table import Table
 
 from reelbox import db
 from reelbox.config import Settings, get_settings
+from reelbox.enrich import runner
+from reelbox.enrich.transcribe import WhisperTranscriber
 from reelbox.importers import ImportReport, instagram, urllist, youtube
+from reelbox.urls import Platform
+from reelbox.ytdlp import CookieSource, YtdlpClient
 
 app = typer.Typer(help="저장한 릴스·쇼츠를 AI로 요약·주제 분류하는 개인용 앱", no_args_is_help=True)
 import_app = typer.Typer(help="내보내기 파일·목록 가져오기", no_args_is_help=True)
@@ -35,6 +39,9 @@ def main(
         format="%(message)s",
         handlers=[RichHandler(console=console, show_path=False)],
     )
+    # whisper 모델을 받을 때 나오는 요청 로그(HTTP Request: ...)는 -v 에서도 숨긴다
+    for noisy in ("httpx", "huggingface_hub"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
 def _not_implemented(command: str) -> None:
@@ -183,13 +190,73 @@ def sync_youtube(limit: LimitOpt = None, dry_run: DryRunOpt = False) -> None:
     _print_report(report)
 
 
+def _client_factory(settings: Settings) -> runner.ClientFactory:
+    """플랫폼 → YtdlpClient. 인스타는 쿠키가 꼭 있어야 하고, 유튜브는 설정돼 있으면 쓴다."""
+
+    def open_client(platform: Platform) -> YtdlpClient:
+        if platform == "youtube" and not CookieSource.is_configured(settings, "youtube"):
+            return YtdlpClient(None)  # 공개 쇼츠는 쿠키 없이도 읽힌다
+        return YtdlpClient(CookieSource.from_settings(settings, platform))
+
+    return open_client
+
+
+def _print_enrich_report(report: runner.EnrichReport) -> None:
+    table = Table(title="보강 결과")
+    table.add_column("항목")
+    table.add_column("개수", justify="right")
+    table.add_row("[green]enriched[/green]", str(report.enriched))
+    for source, n in sorted(report.sources.items()):
+        table.add_row(f"  └ 내용 출처: {source}", str(n))
+    table.add_row("[red]failed[/red]", str(report.failed))
+    table.add_row("[yellow]unavailable[/yellow]", str(report.unavailable))
+    if report.no_caption:
+        table.add_row("캡션이 없어 건너뜀", str(report.no_caption))
+    console.print(table)
+    if report.tmp_cleaned:
+        console.print(f"[dim]지난 실행에서 남은 임시 오디오 {report.tmp_cleaned}개를 지움[/dim]")
+    for platform, reason in report.stopped.items():
+        console.print(f"[red]{platform} 처리를 멈춤[/red] {reason}")
+    if report.failed:
+        console.print("실패 이유는 [bold]reelbox status[/bold] 에서 볼 수 있음")
+
+
 @app.command()
 def enrich(
     limit: LimitOpt = None,
-    platform: Annotated[str | None, typer.Option(help="instagram 또는 youtube")] = None,
+    platform: Annotated[Platform | None, typer.Option(help="instagram 또는 youtube")] = None,
+    captions_only: Annotated[
+        bool,
+        typer.Option(
+            "--captions-only",
+            help="인스타에 접속하지 않고 내보내기 파일의 캡션만으로 보강 완료 처리 (차단됐을 때)",
+        ),
+    ] = False,
 ) -> None:
     """메타·자막·받아쓰기."""
-    _not_implemented("enrich")
+    settings = get_settings()
+    conn = _open_db(settings)
+    try:
+        if captions_only:
+            report = runner.enrich_from_captions(conn, settings, platform=platform, limit=limit)
+        else:
+            deps = runner.EnrichDeps(
+                open_client=_client_factory(settings),
+                transcriber=WhisperTranscriber(
+                    settings.whisper_model, settings.whisper_device, settings.whisper_compute_type
+                ),
+            )
+            with console.status("보강 준비 중...") as spinner:
+
+                def on_item(n: int, total: int, item: db.EnrichCandidate) -> None:
+                    spinner.update(f"보강 중 {n}/{total} [dim]{item.url}[/dim]")
+
+                report = runner.enrich_items(
+                    conn, settings, deps, platform=platform, limit=limit, on_item=on_item
+                )
+    finally:
+        conn.close()
+    _print_enrich_report(report)
 
 
 @app.command()

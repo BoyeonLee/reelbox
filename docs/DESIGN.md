@@ -104,10 +104,11 @@ Go가 더 익숙하더라도, 이 프로젝트는 AI·영상 도구 때문에 Py
 | `embeddings` (sqlite-vec) | item\_id, vector(1024) | 의미 검색용 |
 | `items_fts` (FTS5, trigram) | title, description, transcript, summary, tags | 키워드 검색용 |
 | `user_meta` | item\_id, favorite, note, hidden\_at, deleted\_at | 내가 휴대폰에서 남기는 표시·메모, 숨김·휴지통 시각 |
+| `fetch_log` | id, platform, item\_id, fetched\_at | 보강 단계가 플랫폼에 요청한 기록. 인스타 일일 한도(최근 24시간 개수)를 센다 (Phase 2, `002_fetch_log.sql`) |
 
 ### status 흐름
 
-`imported` → `enriched` → `analyzed` → `indexed`. 실패하면 `failed`(error에 이유, attempts 증가, 3회까지 재시도). 영상이 삭제·비공개면 `unavailable`, 쇼츠 길이를 넘으면 `skipped`, 휴지통에서 영구 삭제되면 `deleted`. 스키마 변경은 간단한 번호별 SQL 마이그레이션 파일(`migrations/001_init.sql` …)로 관리한다.
+`imported` → `enriched` → `analyzed` → `indexed`. 실패하면 `failed`(error에 이유, attempts 증가, 3회까지 재시도). 영상이 삭제·비공개면 `unavailable`, 휴지통에서 영구 삭제되면 `deleted`. `skipped`는 예약만 해 두고 지금은 쓰지 않는다(Phase 2: 긴 영상도 받아쓰기만 건너뛰고 분석한다). 스키마 변경은 간단한 번호별 SQL 마이그레이션 파일(`migrations/001_init.sql` …)로 관리한다.
 
 ### 숨기기와 삭제
 
@@ -134,10 +135,11 @@ Go가 더 익숙하더라도, 이 프로젝트는 AI·영상 도구 때문에 Py
 ### 5-2. 보강 (enrich)
 
 1. yt-dlp로 **다운로드 없이** 메타데이터를 받는다: 제목, 작성자, 설명(인스타는 캡션), 길이, 썸네일. 썸네일은 320px webp로 data/thumbs/에 저장한다(인스타 썸네일 주소는 며칠 뒤 만료되기 때문).
-2. 자막이 있으면 받는다. 우선순위: 수동 자막(ko → en → 아무거나) → 자동 자막.
-3. 자막이 없고 영상이면 **오디오만** 임시 폴더에 받아 faster-whisper로 받아쓴 뒤 바로 지운다(언어 자동 감지, 기본 모델 `small`, 설정으로 변경).
-4. 인스타는 로그인이 필요하다. yt-dlp의 `--cookies-from-browser` 또는 쿠키 파일을 설정으로 받는다. 요청 사이 **5–10초 무작위 대기**, 로그인 차단·429 응답이 오면 즉시 멈추고 다음에 이어서 한다.
-5. 사진 게시물은 캡션만 쓴다. 삭제된 영상은 `unavailable`로 표시하고 목록에는 남긴다.
+2. 자막이 있으면 받는다. 우선순위: 영상 원래 언어의 자막(수동 → 자동) → 수동 자막(ko → en → 아무거나) → 자동 자막. 한국어 영상의 영어 번역 자막보다 한국어 원문 자막을 먼저 쓰기 위해서다 (Phase 2에서 실제 데이터로 확인). 유튜브는 자동 더빙 음성의 자막에도 `-orig`를 붙이므로(예: 한국어 영상에 `en-US-orig`), 원래 언어는 원래 음성 트랙(`language_preference`가 가장 높은 것)으로 판단한다.
+3. 자막이 없고 영상이면 **오디오만** 임시 폴더(data/tmp)에 받아 faster-whisper로 받아쓴 뒤 바로 지운다(언어 자동 감지, 기본 모델 `small`, 설정으로 변경). 180초(설정 `max_transcribe_sec`)를 넘는 영상은 받아쓰기만 건너뛰고 제목·설명으로 분석한다. 자동 자막은 기계 번역본을 피하려고 원래 언어를 먼저 고른다.
+4. 인스타는 로그인이 필요하다. yt-dlp의 `--cookies-from-browser` 또는 쿠키 파일을 설정으로 받는다. 요청 사이 **5–10초 무작위 대기**, 최근 24시간 처리 개수가 한도(기본 200)를 넘거나 로그인 차단·429 응답·쿠키 만료 경고가 오면 **인스타만** 즉시 멈추고(유튜브는 계속) 다음에 이어서 한다. 차단은 보통 몇 시간~하루면 풀린다.
+5. 사진 게시물은 캡션만 쓴다. 삭제된 영상은 `unavailable`로 표시하고 목록에는 남긴다. 그 외 실패는 `failed`(error, attempts)로 남기고 3회까지 다시 시도한다.
+6. 인스타 내보내기 파일의 캡션·작성자는 가져오기 단계에서 `description`·`author`에 미리 넣는다. 인스타가 계속 막히면 `reelbox enrich --captions-only`로 접속 없이 이 캡션만으로 `enriched`로 넘겨 분석할 수 있다.
 
 ### 5-3. AI 분석 (analyze)
 
@@ -248,7 +250,7 @@ reelbox/
 | `reelbox import instagram <폴더\|zip>` | 인스타 내보내기 가져오기 |
 | `reelbox import youtube <폴더\|zip>` | 테이크아웃(보조): 저장 시각 채우기 |
 | `reelbox import urls <파일>` | 링크 목록 가져오기 |
-| `reelbox enrich [--limit N] [--platform]` | 메타·자막·받아쓰기 |
+| `reelbox enrich [--limit N] [--platform] [--captions-only]` | 메타·자막·받아쓰기 (`--captions-only`: 접속 없이 내보내기 캡션만으로) |
 | `reelbox analyze [--limit N] [--dry-run]` | AI 요약·태그 |
 | `reelbox organize [--full]` | 주제 정리 |
 | `reelbox index` | 임베딩·검색 색인 |
@@ -282,7 +284,7 @@ reelbox/
 
 | 리스크 | 영향 | 대응 |
 | --- | --- | --- |
-| 인스타 자동 수집이 약관에 어긋나고 계정 제한 가능 | 계정 일시 잠금, 보강 중단 | 개인 용도로만 사용, 요청 5\~10초 간격, 하루 최대 개수 설정(기본 200), 차단 신호 시 즉시 중지. 그래도 막히면 캡션만으로 분석 |
+| 인스타 자동 수집이 약관에 어긋나고 계정 제한 가능 | 계정 일시 잠금, 보강 중단 | 개인 용도로만 사용, 요청 5\~10초 간격, 하루 최대 개수 설정(기본 200), 차단 신호 시 즉시 중지. 그래도 막히면 내보내기 파일의 캡션만으로 분석(`enrich --captions-only`) |
 | 내보내기 파일 형식 변경 | 가져오기 실패 | 키 이름 대신 URL·시각을 재귀적으로 찾는 파서, 인식 못 한 항목은 로그로 보고 |
 | 윈도우 Chrome 쿠키를 yt-dlp가 못 읽음 | 저장된 Shorts 목록을 못 가져옴 | Firefox 쿠키 또는 cookies.txt 사용. 그래도 안 되면 테이크아웃을 확인하거나, 브라우저에서 목록을 뽑아 URL 목록으로 가져오기 |
 | 자막·말이 없는 영상(음악만, 화면 글자만) | 요약 품질 낮음 | 제목·캡션으로 분석하고 "정보 부족" 표시. 화면 글자 인식(OCR)은 나중에 |

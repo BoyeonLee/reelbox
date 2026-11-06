@@ -5,8 +5,9 @@ ANTHROPIC_API_KEY 만 Anthropic 관례대로 접두사 없이 읽는다.
 """
 
 from pathlib import Path
+from typing import Self
 
-from pydantic import AliasChoices, Field, SecretStr
+from pydantic import AliasChoices, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # src/reelbox/config.py → 저장소 루트
@@ -40,9 +41,36 @@ class Settings(BaseSettings):
 
     youtube_saved_shorts_url: str | None = None
 
+    # 보강(enrich). 인스타 요청 간격은 5초 밑으로 내릴 수 없다 (DESIGN.md 9장).
+    instagram_daily_limit: int = Field(default=200, ge=0)  # 최근 24시간 동안 처리할 최대 개수
+    instagram_delay_min_sec: float = Field(default=5.0, ge=5.0)
+    instagram_delay_max_sec: float = Field(default=10.0, ge=5.0)
+    max_attempts: int = 3  # 실패한 항목을 다시 시도하는 최대 횟수
+    # 이보다 긴 영상은 받아쓰기만 건너뛰고 제목·설명으로 분석한다 (쇼츠·릴스 최대 3분)
+    max_transcribe_sec: float = 180.0
+
+    # faster-whisper: 모델 크기 tiny/base/small/medium/large-v3, CPU 에서는 int8 이 빠르다
+    whisper_model: str = "small"
+    whisper_device: str = "cpu"
+    whisper_compute_type: str = "int8"
+
+    @model_validator(mode="after")
+    def _check_delay(self) -> Self:
+        if self.instagram_delay_max_sec < self.instagram_delay_min_sec:
+            raise ValueError("instagram_delay_max_sec 는 instagram_delay_min_sec 이상이어야 함")
+        return self
+
     @property
     def db_path(self) -> Path:
         return self.data_dir / "reelbox.db"
+
+    @property
+    def tmp_dir(self) -> Path:
+        return self.data_dir / "tmp"
+
+    @property
+    def thumbs_dir(self) -> Path:
+        return self.data_dir / "thumbs"
 
 
 def get_settings() -> Settings:

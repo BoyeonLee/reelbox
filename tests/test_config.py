@@ -36,3 +36,14 @@ def test_secrets_are_masked(monkeypatch: pytest.MonkeyPatch) -> None:
     s = Settings(_env_file=None)
     assert "very-secret" not in repr(s)
     assert "very-secret" not in str(s.model_dump())
+
+
+def test_instagram_delay_cannot_go_below_5_seconds() -> None:
+    with pytest.raises(ValueError):
+        Settings(_env_file=None, instagram_delay_min_sec=1)
+    with pytest.raises(ValueError):
+        Settings(_env_file=None, instagram_delay_min_sec=8, instagram_delay_max_sec=6)
+    s = Settings(_env_file=None)
+    assert (s.instagram_delay_min_sec, s.instagram_delay_max_sec) == (5.0, 10.0)
+    assert s.instagram_daily_limit == 200
+    assert s.whisper_model == "small"

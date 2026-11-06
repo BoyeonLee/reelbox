@@ -8,29 +8,20 @@ yt-dlp --flat-playlist 와 같은 방식(extract_flat)으로 영상을 받지 �
 import logging
 import sqlite3
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import Any, Self
+from typing import Any
 
 import yt_dlp
 from pydantic import BaseModel
 
 from reelbox import db
-from reelbox.config import PROJECT_ROOT, Settings
 from reelbox.importers import ImportReport
+
+# CookieError·CookieSource 는 보강 단계와 같이 쓰려고 reelbox.ytdlp 로 옮겼다 (여기서 다시 내보냄)
+from reelbox.ytdlp import CookieError, CookieSource, YtdlpLogger
 
 logger = logging.getLogger(__name__)
 
 SOURCE = "youtube_sync"
-
-
-class CookieError(Exception):
-    """쿠키 문제로 목록을 못 읽음. cause=원인, fix=해결 방법, detail=yt-dlp 원문."""
-
-    def __init__(self, *, cause: str, fix: str, detail: str = "") -> None:
-        super().__init__(cause)
-        self.cause = cause
-        self.fix = fix
-        self.detail = detail
 
 
 class PlaylistError(Exception):
@@ -40,62 +31,6 @@ class PlaylistError(Exception):
 class PlaylistEntry(BaseModel):
     video_id: str
     title: str | None = None
-
-
-class CookieSource(BaseModel):
-    browser: str | None = None  # 'firefox' 또는 'firefox:<프로필 이름이나 경로>'
-    file: Path | None = None  # Netscape 형식 cookies.txt
-
-    @classmethod
-    def from_settings(cls, settings: Settings) -> Self:
-        browser = settings.youtube_cookies_from_browser
-        file = settings.youtube_cookies_file
-        if browser and file:
-            raise CookieError(
-                cause="쿠키 설정이 두 개 다 있음 (브라우저 이름, cookies.txt 경로). "
-                "하나만 써야 함.",
-                fix=".env 에서 REELBOX_YOUTUBE_COOKIES_FROM_BROWSER 와 "
-                "REELBOX_YOUTUBE_COOKIES_FILE 중 하나를 비운다.",
-            )
-        if not browser and not file:
-            raise CookieError(
-                cause="유튜브 쿠키 설정이 없음.",
-                fix=".env 에 REELBOX_YOUTUBE_COOKIES_FILE=secrets/youtube_cookies.txt 또는 "
-                "REELBOX_YOUTUBE_COOKIES_FROM_BROWSER=firefox 를 넣는다.",
-            )
-        if file:
-            if not file.is_absolute():
-                file = PROJECT_ROOT / file
-            if not file.is_file():
-                raise CookieError(
-                    cause=f"cookies.txt 파일이 없음: {file}",
-                    fix="브라우저 확장(예: Get cookies.txt LOCALLY)으로 youtube.com 쿠키를 "
-                    "내보내 그 경로에 둔다. 경로는 REELBOX_YOUTUBE_COOKIES_FILE.",
-                )
-        return cls(browser=browser, file=file)
-
-    def ydl_opts(self) -> dict[str, Any]:
-        if self.browser:
-            name, _, profile = self.browser.partition(":")
-            # (브라우저, 프로필, 키링, 컨테이너)
-            return {"cookiesfrombrowser": (name, profile or None, None, None)}
-        return {"cookiefile": str(self.file)}
-
-
-class _YtdlpLogger:
-    """yt-dlp 출력을 logging 으로 보낸다. 오류는 예외로 따로 다루므로 debug 로 낮춘다."""
-
-    def debug(self, msg: str) -> None:
-        logger.debug(msg)
-
-    def info(self, msg: str) -> None:
-        logger.debug(msg)
-
-    def warning(self, msg: str) -> None:
-        logger.warning(msg)
-
-    def error(self, msg: str) -> None:
-        logger.debug(msg)
 
 
 def _extract(url: str, opts: dict[str, Any]) -> dict[str, Any]:
@@ -167,7 +102,7 @@ def fetch_playlist(url: str, cookies: CookieSource, limit: int | None) -> list[P
         "extract_flat": "in_playlist",  # = --flat-playlist
         "skip_download": True,
         "quiet": True,
-        "logger": _YtdlpLogger(),
+        "logger": YtdlpLogger(),
         **cookies.ydl_opts(),
     }
     if limit is not None:

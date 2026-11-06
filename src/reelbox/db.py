@@ -6,12 +6,13 @@ import sqlite3
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
+from typing import Literal
 
 import sqlite_vec
 from pydantic import BaseModel
 
 from reelbox.config import Settings
-from reelbox.urls import parse_url
+from reelbox.urls import MediaType, Platform, parse_url
 
 logger = logging.getLogger(__name__)
 
@@ -149,33 +150,39 @@ def add_item(
     saved_at: datetime | None,
     source: str,
     collection: str | None = None,
+    description: str | None = None,
+    author: str | None = None,
 ) -> AddOutcome:
     """모든 입구(내보내기·동기화·URL 목록·공유)가 쓰는 항목 추가 함수. 커밋은 부르는 쪽이 한다.
 
-    이미 있는 영상이면 새로 만들지 않고, 비어 있던 saved_at·collection 만 채운다.
-    그래서 같은 파일을 여러 번 넣어도 결과가 같다(멱등).
+    이미 있는 영상이면 새로 만들지 않고, 비어 있던 saved_at·collection·description·author 만
+    채운다. 그래서 같은 파일을 여러 번 넣어도 결과가 같다(멱등).
+    description·author 는 인스타 내보내기 파일의 캡션·작성자 (보강 전에도 분석할 수 있게).
     """
     parsed = parse_url(url)
     if parsed is None:
         return AddOutcome.UNRECOGNIZED
-    saved = to_iso(saved_at) if saved_at else None
+    values = {
+        "platform": parsed.platform,
+        "source_id": parsed.source_id,
+        "url": parsed.url,
+        "saved_at": to_iso(saved_at) if saved_at else None,
+        "source": source,
+        "collection": collection,
+        "media_type": parsed.media_type,
+        "description": description or None,
+        "author": author or None,
+    }
 
     cur = conn.execute(
         """
-        INSERT INTO items
-            (platform, source_id, url, saved_at, imported_from, collection, media_type)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO items (platform, source_id, url, saved_at, imported_from, collection,
+                           media_type, description, author)
+        VALUES (:platform, :source_id, :url, :saved_at, :source, :collection,
+                :media_type, :description, :author)
         ON CONFLICT (platform, source_id) DO NOTHING
         """,
-        (
-            parsed.platform,
-            parsed.source_id,
-            parsed.url,
-            saved,
-            source,
-            collection,
-            parsed.media_type,
-        ),
+        values,
     )
     if cur.rowcount == 1:
         return AddOutcome.ADDED
@@ -186,13 +193,145 @@ def add_item(
     ).fetchone()
     if row["status"] == "deleted":
         return AddOutcome.DELETED
+    # 채울 게 있을 때만 UPDATE 한다 (안 그러면 트리거가 updated_at 을 매번 바꾼다)
     conn.execute(
         """
         UPDATE items
-        SET saved_at = COALESCE(saved_at, ?), collection = COALESCE(collection, ?)
-        WHERE id = ? AND (
-            (saved_at IS NULL AND ? IS NOT NULL) OR (collection IS NULL AND ? IS NOT NULL))
+        SET saved_at = COALESCE(saved_at, :saved_at),
+            collection = COALESCE(collection, :collection),
+            description = COALESCE(description, :description),
+            author = COALESCE(author, :author)
+        WHERE id = :id AND (
+            (saved_at IS NULL AND :saved_at IS NOT NULL)
+            OR (collection IS NULL AND :collection IS NOT NULL)
+            OR (description IS NULL AND :description IS NOT NULL)
+            OR (author IS NULL AND :author IS NOT NULL))
         """,
-        (saved, collection, row["id"], saved, collection),
+        {**values, "id": row["id"]},
     )
     return AddOutcome.DUPLICATE
+
+
+# --- 보강(enrich) 단계 ---
+
+
+class EnrichCandidate(BaseModel):
+    id: int
+    platform: Platform
+    source_id: str
+    url: str
+    media_type: MediaType | None
+    description: str | None
+    status: str
+    attempts: int
+
+
+def enrich_candidates(
+    conn: sqlite3.Connection,
+    *,
+    platform: str | None,
+    max_attempts: int,
+    limit: int | None,
+) -> list[EnrichCandidate]:
+    """보강할 차례인 항목. imported 먼저, 그다음 다시 시도할 failed.
+
+    failed 는 다른 단계(analyze 등)에서도 쓰므로, 보강 결과(transcripts)가 없는 것만
+    보강 단계의 실패로 본다.
+    """
+    rows = conn.execute(
+        """
+        SELECT id, platform, source_id, url, media_type, description, status, attempts
+        FROM items AS i
+        WHERE (status = 'imported'
+               OR (status = 'failed' AND attempts < :max_attempts
+                   AND NOT EXISTS (SELECT 1 FROM transcripts AS t WHERE t.item_id = i.id)))
+          AND (:platform IS NULL OR platform = :platform)
+        ORDER BY status = 'failed', id
+        LIMIT :limit
+        """,
+        {
+            "max_attempts": max_attempts,
+            "platform": platform,
+            "limit": -1 if limit is None else limit,
+        },
+    )
+    return [EnrichCandidate(**dict(r)) for r in rows]
+
+
+def log_fetch(conn: sqlite3.Connection, platform: str, item_id: int | None, at: datetime) -> None:
+    """플랫폼에 요청한 기록 한 줄. 일일 한도를 세는 데 쓴다. 바로 커밋한다."""
+    with conn:
+        conn.execute(
+            "INSERT INTO fetch_log (platform, item_id, fetched_at) VALUES (?, ?, ?)",
+            (platform, item_id, to_iso(at)),
+        )
+
+
+def fetch_count_since(conn: sqlite3.Connection, platform: str, since: datetime) -> int:
+    return conn.execute(
+        "SELECT COUNT(*) FROM fetch_log WHERE platform = ? AND fetched_at >= ?",
+        (platform, to_iso(since)),
+    ).fetchone()[0]
+
+
+TranscriptSource = Literal["captions", "whisper", "none"]
+
+
+class Enrichment(BaseModel):
+    """보강 결과. None 인 메타 값은 기존 값을 지우지 않는다 (내보내기 캡션 등을 남김)."""
+
+    title: str | None = None
+    author: str | None = None
+    description: str | None = None
+    duration_sec: float | None = None
+    thumbnail_url: str | None = None
+    thumbnail_path: str | None = None  # data_dir 기준 상대 경로
+    media_type: MediaType | None = None
+    transcript_source: TranscriptSource = "none"
+    transcript_language: str | None = None
+    transcript_text: str | None = None
+
+
+def save_enrichment(conn: sqlite3.Connection, item_id: int, e: Enrichment) -> None:
+    """items 를 채우고 transcripts 를 넣은 뒤 enriched 로 바꾼다. 한 트랜잭션."""
+    with conn:
+        conn.execute(
+            """
+            UPDATE items
+            SET title = COALESCE(:title, title),
+                author = COALESCE(:author, author),
+                description = COALESCE(:description, description),
+                duration_sec = COALESCE(:duration_sec, duration_sec),
+                thumbnail_url = COALESCE(:thumbnail_url, thumbnail_url),
+                thumbnail_path = COALESCE(:thumbnail_path, thumbnail_path),
+                media_type = COALESCE(:media_type, media_type),
+                status = 'enriched',
+                error = NULL
+            WHERE id = :id
+            """,
+            {**e.model_dump(), "id": item_id},
+        )
+        conn.execute(
+            """
+            INSERT INTO transcripts (item_id, source, language, text) VALUES (?, ?, ?, ?)
+            ON CONFLICT (item_id) DO UPDATE
+            SET source = excluded.source, language = excluded.language, text = excluded.text
+            """,
+            (item_id, e.transcript_source, e.transcript_language, e.transcript_text),
+        )
+
+
+def mark_failed(conn: sqlite3.Connection, item_id: int, error: str) -> None:
+    with conn:
+        conn.execute(
+            "UPDATE items SET status = 'failed', error = ?, attempts = attempts + 1 WHERE id = ?",
+            (error, item_id),
+        )
+
+
+def mark_unavailable(conn: sqlite3.Connection, item_id: int, error: str) -> None:
+    """삭제·비공개 영상. 목록에는 남기고 다시 시도하지 않는다."""
+    with conn:
+        conn.execute(
+            "UPDATE items SET status = 'unavailable', error = ? WHERE id = ?", (error, item_id)
+        )

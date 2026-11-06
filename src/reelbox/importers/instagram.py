@@ -26,6 +26,10 @@ POSTS_FILE = "saved_posts.json"
 COLLECTIONS_FILE = "saved_collections.json"
 # 컬렉션 이름이 들어 있는 라벨 (계정 언어에 따라 다름)
 NAME_LABELS = {"이름", "Name"}
+# 2026년 형식의 캡션·작성자 라벨. 없으면 비워 두고 보강 단계가 채운다.
+CAPTION_LABELS = {"캡션", "Caption"}
+OWNER_TITLES = {"소유자", "Owner"}
+USERNAME_LABELS = {"사용자 이름", "Username"}
 
 
 def fix_mojibake(text: str) -> str:
@@ -111,6 +115,53 @@ def _post_links(record: Any) -> list[tuple[str, datetime | None]]:
     return links
 
 
+def _find_label(node: Any, labels: set[str]) -> str | None:
+    """{"label": <labels 중 하나>, "value": "..."} 중 값이 비어 있지 않은 첫 번째."""
+    if isinstance(node, dict):
+        value = node.get("value")
+        if node.get("label") in labels and isinstance(value, str) and value.strip():
+            return value
+        children: Any = node.values()
+    elif isinstance(node, list):
+        children = node
+    else:
+        return None
+    for child in children:
+        if (found := _find_label(child, labels)) is not None:
+            return found
+    return None
+
+
+def _find_titled(node: Any, titles: set[str]) -> Any | None:
+    """{"title": <titles 중 하나>, ...} 인 첫 번째 dict."""
+    if isinstance(node, dict):
+        if node.get("title") in titles:
+            return node
+        children: Any = node.values()
+    elif isinstance(node, list):
+        children = node
+    else:
+        return None
+    for child in children:
+        if (found := _find_titled(child, titles)) is not None:
+            return found
+    return None
+
+
+def _post_meta(record: Any) -> tuple[str | None, str | None]:
+    """(캡션, 작성자 아이디). 한 항목에 같은 캡션이 두 번 들어 있기도 해서 첫 번째를 쓴다.
+
+    옛 형식은 항목의 title 이 작성자 아이디다 (캡션은 없음).
+    """
+    caption = _find_label(record, CAPTION_LABELS)
+    owner = _find_titled(record, OWNER_TITLES)
+    author = _find_label(owner, USERNAME_LABELS) if owner is not None else None
+    if author is None and isinstance(record, dict) and "string_map_data" in record:
+        title = record.get("title")
+        author = title if isinstance(title, str) and title else None
+    return caption, author
+
+
 def _collection_name(record: Any) -> str | None:
     """가장 얕은 곳의 '이름' 값. 깊은 곳의 '이름'은 작성자·해시태그라서 너비 우선으로 찾는다.
 
@@ -179,12 +230,22 @@ def import_instagram(
                 logger.warning("%s %d번째 항목에서 게시물 링크를 못 찾음", POSTS_FILE, i + 1)
                 report.unrecognized += 1
                 continue
+            # 저장 목록의 항목 하나 = 게시물 하나라서 캡션·작성자는 그 게시물 것이다
+            caption, author = _post_meta(record) if len(links) == 1 else (None, None)
             for href, saved_at in links:
                 parsed = parse_url(href)
                 assert parsed is not None
                 collection = collections.get(parsed.source_id, (None, None))[1]
                 report.record(
-                    db.add_item(conn, href, saved_at=saved_at, source=SOURCE, collection=collection)
+                    db.add_item(
+                        conn,
+                        href,
+                        saved_at=saved_at,
+                        source=SOURCE,
+                        collection=collection,
+                        description=caption,
+                        author=author,
+                    )
                 )
                 done.add(parsed.source_id)
 

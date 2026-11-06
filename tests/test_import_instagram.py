@@ -121,3 +121,28 @@ def test_multiple_collections(conn: sqlite3.Connection, tmp_path: Path) -> None:
 def test_missing_saved_posts(conn: sqlite3.Connection, tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError, match="saved_posts.json"):
         import_instagram(conn, tmp_path)
+
+
+def test_caption_and_author_from_export(conn: sqlite3.Connection) -> None:
+    import_instagram(conn, EXPORT)
+    reel = _items(conn)["FAKEreel001"]
+    assert reel["description"] == "브라운 버터 파스타 만들기"
+    assert reel["author"] == "fake_chef"
+
+
+def test_reimport_fills_missing_caption(conn: sqlite3.Connection) -> None:
+    # Phase 1 에서 캡션 없이 들어간 항목도 다시 가져오면 채워진다
+    conn.execute(
+        "INSERT INTO items (platform, source_id, url) VALUES "
+        "('instagram', 'FAKEreel001', 'https://www.instagram.com/reel/FAKEreel001/')"
+    )
+    conn.commit()
+    import_instagram(conn, EXPORT)
+    assert _items(conn)["FAKEreel001"]["description"] == "브라운 버터 파스타 만들기"
+
+
+def test_legacy_format_author_from_title(conn: sqlite3.Connection) -> None:
+    import_instagram(conn, FIXTURES / "instagram_legacy")
+    items = _items(conn)
+    assert items["LEGACYreel1"]["author"] == "fake_runner"
+    assert items["LEGACYreel1"]["description"] is None
