@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "secondary-fixed-dim": "#cebdff", "primary": "#4623c0", "on-primary-fixed": "#1a0063", "secondary-container": "#c8b6ff", "on-tertiary": "#ffffff", "primary-fixed": "#e5deff", "on-background": "#1c192d", "inverse-primary": "#c9bfff", "surface-container-highest": "#e5dffa", "on-secondary": "#ffffff", "surface": "#fdf8ff", "surface-container-high": "#ebe5ff", "inverse-on-surface": "#f4eeff", "on-error-container": "#93000a", "error-container": "#ffdad6", "surface-container": "#f1ebff", "tertiary-container": "#5e40e0", "on-error": "#ffffff", "on-tertiary-container": "#dcd4ff", "primary-container": "#5e43d8", "inverse-surface": "#312e43", "on-tertiary-fixed": "#1a0063", "on-secondary-container": "#544484", "on-secondary-fixed-variant": "#4c3c7c", "tertiary": "#451dc8", "tertiary-fixed": "#e5deff", "on-secondary-fixed": "#200d4e", "on-surface-variant": "#484554", "surface-tint": "#5e43d8", "secondary": "#645495", "surface-variant": "#e5dffa", "error": "#ba1a1a", "on-tertiary-fixed-variant": "#441cc8", "surface-container-low": "#f7f1ff", "on-primary-fixed-variant": "#4523bf", "tertiary-fixed-dim": "#c9bfff", "surface-container-lowest": "#ffffff", "background": "#fdf8ff", "surface-bright": "#fdf8ff", "surface-dim": "#ddd6f2", "on-primary-container": "#dcd4ff", "outline-variant": "#c9c4d7", "on-primary": "#ffffff", "primary-fixed-dim": "#c9bfff", "outline": "#797586", "on-surface": "#1c192d", "secondary-fixed": "#e8ddff" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "gutter": "1rem", "space-sm": "0.5rem", "space-lg": "1.5rem", "space-md": "1rem", "space-xs": "0.25rem", "margin": "1rem", "space-xl": "2rem" }, fontFamily: { "label-lg": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "display-lg": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"], "headline-sm": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"] }, fontSize: { "label-lg": ["14px", { lineHeight: "20px", letterSpacing: "0.01em", fontWeight: "600" }], "body-md": ["14px", { lineHeight: "22px", letterSpacing: "0.005em", fontWeight: "400" }], "headline-lg": ["26px", { lineHeight: "34px", letterSpacing: "-0.015em", fontWeight: "600" }], "display-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700" }], "body-lg": ["16px", { lineHeight: "26px", letterSpacing: "0em", fontWeight: "400" }], "label-sm": ["11px", { lineHeight: "14px", letterSpacing: "0.03em", fontWeight: "500" }], "headline-sm": ["18px", { lineHeight: "26px", letterSpacing: "-0.005em", fontWeight: "600" }], "headline-md": ["22px", { lineHeight: "30px", letterSpacing: "-0.01em", fontWeight: "600" }], "body-sm": ["13px", { lineHeight: "18px", letterSpacing: "0.01em", fontWeight: "400" }], "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.02em", fontWeight: "600" }] } } } }</script><style>@layer base{html,body{width:100vw;margin:0;padding:0;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-14 px-gutter flex items-center justify-between"><div class="flex items-center gap-space-xs"><button aria-label="Go back" class="min-w-[44px] min-h-[44px] flex items-center justify-center text-on-surface hover:text-primary transition-colors" onclick="history.back()"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button><h1 class="font-headline-sm text-headline-sm text-on-surface truncate">Media Detail Dialog</h1></div><div class="flex items-center gap-space-xs"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 flex flex-col relative w-full pt-14 pb-safe bg-surface"><div class="flex flex-col w-full relative min-w-0 select-none overflow-hidden pb-12">
+<div aria-hidden="true" class="flex flex-col w-full px-gutter pt-space-md filter blur-[6px] opacity-40 transition-all duration-300 pointer-events-none" id="trash-bg-content">
+<div class="flex items-center justify-between bg-surface-container-high rounded-xl px-space-md py-3 mb-space-md">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="material-symbols-outlined text-[20px] text-primary shrink-0" style="font-variation-settings: 'FILL' 1;">info</span>
+<p class="font-body-sm text-body-sm text-on-surface truncate">
+          휴지통의 영상은 30일 후 영구 삭제돼요
+        </p>
+</div>
+<span class="font-label-md text-label-md text-primary font-semibold shrink-0 ml-2">
+        전체 5개
+      </span>
+</div>
+<div class="flex items-center justify-between mb-space-sm px-1">
+<span class="font-label-md text-label-md text-on-surface-variant">항목 선택 (5)</span>
+<button class="font-label-md text-label-md text-error font-semibold" type="button">전체 비우기</button>
+</div>
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center gap-space-md p-space-sm rounded-xl bg-surface-container-lowest shadow-sm">
+<div class="relative w-20 h-14 rounded-lg overflow-hidden shrink-0 bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A calm cinematic video thumbnail capturing minimalist Scandinavian architecture with serene lavender sunset light and clean interior geometry" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDIzJO6g6gfVeIB7KDOmAJvgjTSz385x4prAHdFZdJRlNRm_AO3uGcMq3O3H9rNK0hte-QuHklhQ_-xepMLGoFwX4tZLb6w4Y4SVOPYeGeRWiQXDMvi1dmh_VX6aSDWeNPssR1ewxyY7ags_WzVcfUgIhFlEkDx5t0PKjwW_hAla9XHcdBbco0XT4h75d_gP0Dhe9pTwo8uonxtGOR7Qj0QfUls42R1uR9FptmZBb0"/>
+<span class="absolute bottom-1 right-1 bg-inverse-surface/80 text-inverse-on-surface font-label-sm text-label-sm px-1 rounded">14:20</span>
+</div>
+<div class="flex flex-col min-w-0 flex-1">
+<h2 class="font-headline-sm text-headline-sm text-on-surface truncate">생산성을 높이는 미니멀 서재 세팅 가이드</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">29일 후 영구 삭제 • 요약 노트 4개</p>
+</div>
+</div>
+<div class="flex items-center gap-space-md p-space-sm rounded-xl bg-surface-container-lowest shadow-sm">
+<div class="relative w-20 h-14 rounded-lg overflow-hidden shrink-0 bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Warm studio desk with a leather notebook, soft focused ambient desk lamp, and a modern tablet displaying architectural sketches" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_XSnOEItY-jjo2gJ71PoYADgmPrXObD2Zb8bANKfvdaXoOW8R_pTUyFZN6P3Ogo05wxMzBIuyssNAe4FENh7R5lCIodeY3sRwUdvr6uhZ3-au_m_wVmxqBGXCupxjE1pw-SQUd7rOn_S24SiZocHzYtf2Z4wsZV0_NHROry8GinV4Ohl4ywsd7KDQLXEnb0yCSl_7psCMrAXMVBjqigrERHL6JODxPpTKE8W-rbQ"/>
+<span class="absolute bottom-1 right-1 bg-inverse-surface/80 text-inverse-on-surface font-label-sm text-label-sm px-1 rounded">08:45</span>
+</div>
+<div class="flex flex-col min-w-0 flex-1">
+<h2 class="font-headline-sm text-headline-sm text-on-surface truncate">생각을 구조화하는 디지털 독서 아카이빙 팁</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">27일 후 영구 삭제 • 핵심 클립 2개</p>
+</div>
+</div>
+<div class="flex items-center gap-space-md p-space-sm rounded-xl bg-surface-container-lowest shadow-sm">
+<div class="relative w-20 h-14 rounded-lg overflow-hidden shrink-0 bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Close-up macro shot of typographic book layout with deep indigo bookmarks and textured handmade cotton paper" src="https://lh3.googleusercontent.com/aida-public/AB6AXuARxT7PbYx169ajr7G5vB_KSEkWFLNGecZaNV2IyMgkLqp9eg-MzfvKxBAFDTqI_CzW7sq59CrwX4gr3uvrYRaftrbtQf_fq8SV9u61dqNVYXpBQkZPlsvaBfSQi1XXkL7-Yz9xnYMRf3pI_q21wEYIzQle3NSQebwYW-FkiYJRjda5lcNMFn7anY-PW0PUioUhtSnE3KB0BrnlN5JC7glDLQxIXU4s0FaIgR_wBig"/>
+<span class="absolute bottom-1 right-1 bg-inverse-surface/80 text-inverse-on-surface font-label-sm text-label-sm px-1 rounded">22:15</span>
+</div>
+<div class="flex flex-col min-w-0 flex-1">
+<h2 class="font-headline-sm text-headline-sm text-on-surface truncate">인사이트 정리를 위한 마인드맵 구축 튜토리얼</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">21일 후 영구 삭제 • 아카이브 백업본</p>
+</div>
+</div>
+</div>
+</div>
+<div class="fixed inset-0 z-40 bg-inverse-surface/40 backdrop-blur-md flex items-center justify-center p-gutter transition-opacity duration-300" id="modal-backdrop">
+<div aria-describedby="dialog-desc" aria-labelledby="dialog-title" aria-modal="true" class="w-full max-w-[340px] bg-surface-container-lowest rounded-[24px] shadow-2xl p-6 flex flex-col items-center text-center transform transition-transform duration-300 scale-100 animate-in fade-in zoom-in-95" id="modal-card" role="alertdialog">
+<div class="w-14 h-14 rounded-full bg-error-container flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-[28px] text-error" style="font-variation-settings: 'FILL' 1;">
+          delete_forever
+        </span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface font-bold tracking-tight mb-1.5" id="dialog-title">
+        휴지통을 비울까요?
+      </h2>
+<div class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-error-container/60 text-error font-label-sm text-label-sm font-semibold mb-3">
+<span>되돌릴 수 없어요.</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed mb-6 px-1" id="dialog-desc">
+        휴지통에 보관된 영상 5개와 요약 노트 데이터가 모두 영구히 삭제되며 다시 복원할 수 없습니다.
+      </p>
+<div class="w-full flex flex-col gap-2.5">
+<button class="w-full py-3.5 rounded-xl bg-error text-on-error font-label-lg text-label-lg font-bold shadow-md active:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5" id="btn-confirm-delete" type="button">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+<span>비우기</span>
+</button>
+<button class="w-full py-3.5 rounded-xl bg-surface-container text-on-secondary-container font-label-lg text-label-lg font-semibold active:bg-surface-container-high active:scale-[0.98] transition-all" id="btn-cancel-modal" type="button">
+          취소
+        </button>
+</div>
+</div>
+</div>
+<div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-inverse-surface text-inverse-on-surface px-4 py-2.5 rounded-full shadow-lg font-label-md text-label-md flex items-center gap-2 opacity-0 pointer-events-none transition-opacity duration-300" id="toast-feedback">
+<span class="material-symbols-outlined text-[18px] text-inverse-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span id="toast-text">휴지통을 비웠습니다</span>
+</div>
+</div>
+<script>
+  (function() {
+    const backdrop = document.getElementById('modal-backdrop');
+    const bgContent = document.getElementById('trash-bg-content');
+    const btnCancel = document.getElementById('btn-cancel-modal');
+    const btnConfirm = document.getElementById('btn-confirm-delete');
+    const toast = document.getElementById('toast-feedback');
+    const toastText = document.getElementById('toast-text');
+
+    function showToast(message) {
+      if (!toast) return;
+      toastText.textContent = message;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 2500);
+    }
+
+    function closeModal() {
+      if (backdrop) {
+        backdrop.classList.add('opacity-0', 'pointer-events-none');
+      }
+      if (bgContent) {
+        bgContent.classList.remove('blur-[6px]', 'opacity-40', 'pointer-events-none');
+      }
+    }
+
+    if (btnCancel) {
+      btnCancel.addEventListener('click', () => {
+        closeModal();
+        showToast('작업이 취소되었습니다');
+      });
+    }
+
+    if (btnConfirm) {
+      btnConfirm.addEventListener('click', () => {
+        closeModal();
+        showToast('휴지통의 5개 항목이 영구 삭제되었습니다');
+      });
+    }
+
+    if (backdrop) {
+      backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) {
+          closeModal();
+        }
+      });
+    }
+  })();
+</script></main></body></html>

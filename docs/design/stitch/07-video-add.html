@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><title>Reelbox</title><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;family=Pretendard:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "secondary-container": "#c8b6ff",
+        "surface": "#FAF8FF",
+        "on-secondary": "#ffffff",
+        "inverse-surface": "#312e43",
+        "secondary-fixed-dim": "#cebdff",
+        "secondary": "#5E43D8",
+        "surface-container-low": "#F1EDFC",
+        "error": "#ba1a1a",
+        "on-error": "#ffffff",
+        "primary-fixed-dim": "#c9bfff",
+        "background": "#FAF8FF",
+        "surface-container-high": "#ebe5ff",
+        "inverse-on-surface": "#f4eeff",
+        "on-tertiary": "#ffffff",
+        "surface-variant": "#E5DEFA",
+        "surface-tint": "#5e43d8",
+        "on-primary-fixed-variant": "#4523bf",
+        "on-primary-container": "#dcd4ff",
+        "surface-container": "#F1EDFC",
+        "on-surface-variant": "#655E7A",
+        "surface-dim": "#ddd6f2",
+        "primary-fixed": "#e5deff",
+        "surface-bright": "#FAF8FF",
+        "primary-container": "#5E43D8",
+        "surface-container-lowest": "#ffffff",
+        "on-primary-fixed": "#1a0063",
+        "on-primary": "#ffffff",
+        "inverse-primary": "#c9bfff",
+        "on-secondary-fixed": "#200d4e",
+        "on-secondary-container": "#544484",
+        "secondary-fixed": "#e8ddff",
+        "tertiary-fixed": "#e5deff",
+        "outline-variant": "#E5DEFA",
+        "tertiary-fixed-dim": "#c9bfff",
+        "on-tertiary-fixed": "#1a0063",
+        "on-error-container": "#93000a",
+        "on-tertiary-container": "#dcd4ff",
+        "outline": "#8D879F",
+        "primary": "#5E43D8",
+        "on-background": "#221F33",
+        "tertiary": "#451dc8",
+        "on-surface": "#221F33",
+        "on-tertiary-fixed-variant": "#441cc8",
+        "tertiary-container": "#5e40e0",
+        "on-secondary-fixed-variant": "#4c3c7c",
+        "error-container": "#ffdad6",
+        "surface-container-highest": "#E5DEFA"
+      },
+      borderRadius: {
+        "DEFAULT": "0.25rem",
+        "lg": "0.5rem",
+        "xl": "0.75rem",
+        "full": "9999px"
+      },
+      spacing: {
+        "gutter": "1rem",
+        "space-xl": "2rem",
+        "space-xs": "0.25rem",
+        "space-md": "1rem",
+        "margin": "1rem",
+        "space-lg": "1.5rem",
+        "space-sm": "0.5rem"
+      },
+      fontFamily: {
+        "body-sm": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "body-md": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "display-lg": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "body-lg": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "label-sm": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "label-lg": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "headline-sm": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "headline-lg": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "headline-md": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "label-md": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "caption": ["Plus Jakarta Sans", "Pretendard", "sans-serif"]
+      },
+      fontSize: {
+        "body-sm": ["13px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+        "body-md": ["14px", { "lineHeight": "22px", "letterSpacing": "0.005em", "fontWeight": "400" }],
+        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+        "body-lg": ["16px", { "lineHeight": "26px", "letterSpacing": "0em", "fontWeight": "400" }],
+        "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.03em", "fontWeight": "500" }],
+        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+        "headline-sm": ["18px", { "lineHeight": "26px", "letterSpacing": "-0.005em", "fontWeight": "600" }],
+        "headline-lg": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+        "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+        "caption": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500" }]
+      }
+    }
+  }
+};</script><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;font-family:"Plus Jakarta Sans", "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl border-b border-surface-variant/40"><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="w-8 h-8 rounded-lg bg-primary-container flex items-center justify-center shadow-sm"><span class="material-symbols-outlined text-on-primary text-[20px]">auto_stories</span></div><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight">Reelbox</span></div><div class="flex items-center gap-space-sm"><div class="h-6 px-space-sm rounded-full bg-surface-container-low border border-surface-variant flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><span class="font-caption text-caption text-on-surface-variant font-medium">PC 연결됨</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-sm"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full pt-16 pb-24 bg-surface max-w-[640px] mx-auto min-h-screen px-margin"><div class="flex flex-col w-full gap-space-lg pb-6">
+<!-- Header Area -->
+<section class="flex flex-col gap-1.5 pt-2">
+<div class="flex items-center justify-between">
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">영상 추가</h1>
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container-high text-primary font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+        스마트 감지 ON
+      </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+      인스타그램 릴스나 유튜브 쇼츠 링크를 붙여넣으세요
+    </p>
+<!-- Clipboard Sniffer Bar -->
+<div class="mt-2.5 flex items-center justify-between gap-space-sm p-3 rounded-xl bg-surface-container-low transition-all" id="clipboard-banner">
+<div class="flex items-center gap-2 min-w-0">
+<div class="w-7 h-7 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[16px]">content_paste_go</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-sm text-label-sm text-primary font-semibold">클립보드 링크 발견</span>
+<span class="font-caption text-caption text-on-surface-variant truncate">instagram.com/reel/C8x9Km1pL...</span>
+</div>
+</div>
+<button class="px-3 py-1.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md shadow-sm shrink-0 active:scale-95 transition-transform" id="clipboard-fill-btn" type="button">
+        붙여넣기
+      </button>
+</div>
+</section>
+<!-- URL Input & Submission Card -->
+<section class="flex flex-col gap-space-sm">
+<div class="bg-surface-container-lowest p-3.5 rounded-xl shadow-sm flex flex-col gap-3">
+<!-- Input Row -->
+<div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-low focus-within:bg-surface-container-lowest transition-colors">
+<span class="material-symbols-outlined text-outline text-[20px]">link</span>
+<input class="w-full bg-transparent font-body-md text-body-md text-on-surface placeholder:text-outline focus:outline-none min-w-0 p-0" id="url-input" placeholder="https://www.instagram.com/reel/... 또는 쇼츠" type="url"/>
+<button class="px-2.5 py-1 rounded-md bg-surface-container-high text-primary font-label-sm text-label-sm font-semibold shrink-0 active:bg-surface-variant transition-colors" id="manual-paste-btn" type="button">
+          붙여넣기
+        </button>
+</div>
+<!-- Action Button -->
+<button class="w-full h-12 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-2 shadow-sm active:opacity-90 active:scale-[0.99] transition-all" id="submit-url-btn" type="button">
+<span class="material-symbols-outlined text-[20px]">auto_awesome</span>
+<span>추가하기</span>
+</button>
+</div>
+<!-- Supported Platforms Pill Tags -->
+<div class="flex items-center justify-center gap-2 pt-1">
+<span class="px-2.5 py-1 rounded-full bg-surface-container-low font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+        Instagram Reels
+      </span>
+<span class="px-2.5 py-1 rounded-full bg-surface-container-low font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+        YouTube Shorts
+      </span>
+<span class="px-2.5 py-1 rounded-full bg-surface-container-low font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span>
+        TikTok
+      </span>
+</div>
+</section>
+<!-- Processing Queue Section -->
+<section class="flex flex-col gap-3">
+<!-- Section Title & Meta -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">처리 중</h2>
+<span class="w-5 h-5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm flex items-center justify-center font-bold">4</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant">실시간 동기화</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant -mt-1">
+      AI가 영상 요약과 핵심 포인트를 추출하고 있어요
+    </p>
+<!-- Cards List -->
+<div class="flex flex-col gap-3">
+<!-- Item 1: Analyzing (In Progress) -->
+<article class="p-3.5 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col gap-3">
+<div class="flex gap-3">
+<!-- Thumbnail with Overlay -->
+<div class="relative w-16 h-20 rounded-lg overflow-hidden shrink-0 bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Close up aesthetic overhead shot of fresh basil pesto cold pasta in a ceramic bowl with olive oil drizzle and pine nuts in soft warm morning daylight." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBeRio23C1OA3AP3G1u8FenJhSazII-gDXHtHNGM58DTaPycFB0jL_lP5NPUwCohSLIyapbtTv97Khfaw1CHTAlbhDSWhYOXpkorA-qL9Pcio4thIfJRsrNKFfzKAgvKjyaDTDwg-ME0JCaUXKd6KANw_2XqreDbFHsmLWyNyiIy7D4ExP55_Lf0yIrekkr0M97WbPQ_bIXWMf9UnpPDE8ior-NNrcoIeGzGEnQFyA"/>
+<div class="absolute inset-0 bg-inverse-surface/30 flex items-center justify-center">
+<div class="w-5 h-5 rounded-full border-2 border-surface border-t-transparent animate-spin"></div>
+</div>
+<span class="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-inverse-surface/80 text-surface font-caption text-[9px] leading-none">0:45</span>
+</div>
+<!-- Metadata -->
+<div class="flex flex-col justify-between flex-1 min-w-0">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-1.5">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-primary font-label-sm text-[10px] leading-tight font-medium">Instagram</span>
+<span class="font-caption text-caption text-primary font-semibold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                  분석 중
+                </span>
+</div>
+<h3 class="font-headline-sm text-[15px] leading-snug text-on-surface font-semibold truncate">
+                바질 페스토 콜드 파스타 3분 컷
+              </h3>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant truncate">
+              레시피 재료 요약 및 타이밍 추출 중
+            </p>
+</div>
+</div>
+<!-- 3-Step Progress Indicator & Bar -->
+<div class="flex flex-col gap-2 pt-1 bg-surface-container-low p-2.5 rounded-lg">
+<div class="flex items-center justify-between text-on-surface-variant font-caption text-caption">
+<div class="flex items-center gap-1 text-primary font-semibold">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+<span>1. 대기 완료</span>
+</div>
+<div class="flex items-center gap-1 text-primary font-semibold">
+<span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+<span>2. AI 요약 중 (65%)</span>
+</div>
+<div class="flex items-center gap-1 text-outline">
+<span class="w-2 h-2 rounded-full bg-surface-variant"></span>
+<span>3. 완료</span>
+</div>
+</div>
+<!-- Progress Bar -->
+<div class="w-full h-1.5 rounded-full bg-surface-variant overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-500" style="width: 65%;"></div>
+</div>
+</div>
+</article>
+<!-- Item 2: Queued (Waiting) -->
+<article class="p-3.5 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col gap-3">
+<div class="flex gap-3">
+<!-- Thumbnail / Icon placeholder -->
+<div class="relative w-16 h-20 rounded-lg overflow-hidden shrink-0 bg-surface-container flex items-center justify-center">
+<img class="w-full h-full object-cover opacity-75" data-alt="Modern minimalist home workout room with foam roller and yoga mat bathed in soft atmospheric purple light and serene tone." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKyI2ZGRftuiOY-sikF_zYxqPW06md2S7oZi4whbgt7neWdBDe18BFwAmXYaTUQOR7um-hEKeqyFl0P821n-uMSFByahWQh4DHYRYrzAEdZSm3XQ3mFUHmxnBthpKAbvMaD773Sxv_Z2dJV7_OYwHc4ZK2mP93XODuqC6szLELprE6lw5M-9-UhcnZ8iFUzcswvVkmmym_JIugs350ZzLq-guEQPCc_CHPG7KG5TI"/>
+<div class="absolute inset-0 bg-surface-container/40 flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant text-[22px]">hourglass_top</span>
+</div>
+<span class="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-inverse-surface/80 text-surface font-caption text-[9px] leading-none">0:58</span>
+</div>
+<!-- Metadata -->
+<div class="flex flex-col justify-between flex-1 min-w-0">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-1.5">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-secondary font-label-sm text-[10px] leading-tight font-medium">YouTube</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-[10px] leading-tight font-medium">순서 대기</span>
+</div>
+<h3 class="font-headline-sm text-[15px] leading-snug text-on-surface font-semibold truncate">
+                등 스트레칭 루틴 5가지 (k9Z...shorts)
+              </h3>
+</div>
+<p class="font-caption text-caption text-on-surface-variant truncate">
+              youtube.com/shorts/k9Z3wA...
+            </p>
+</div>
+</div>
+<!-- 3-Step Indicator for Queued -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low font-caption text-caption">
+<div class="flex items-center gap-1.5 text-primary font-semibold">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span>대기 중 (다음 차례 1번째)</span>
+</div>
+<div class="flex items-center gap-1 text-outline">
+<span>예상 소요 ~30초</span>
+</div>
+</div>
+</article>
+<!-- Item 3: Completed -->
+<article class="p-3.5 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col gap-3">
+<div class="flex gap-3">
+<!-- Thumbnail with Success Badge -->
+<div class="relative w-16 h-20 rounded-lg overflow-hidden shrink-0 bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Artisanal sourdough bread loaf with crisp textured crust scored beautifully on a wooden cutting board in a sunlit cozy bakery." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSrWKAhCupvbjd-RA4VnU6fM67jvgVAIHevI8N5qi0BqBb8noStMp2oFpC7sNmTIGKAjnVCpFUUvw5D_TvOtzNc2Ns6x5fEuNZ8RYcETJY6uSQe7ogoe3PR6Z972XJoUkNzXniTy0gPlRTwgLkiN_gV0t1dT01MvBiaiyKV8wb3XOEQ3qiGIBvGqOx0fgKNgx8KCBwqEbNkAqNS6jnA-LfSWcnF4hfnPWEA0wTehA"/>
+<span class="absolute top-1 left-1 w-5 h-5 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</span>
+<span class="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-inverse-surface/80 text-surface font-caption text-[9px] leading-none">0:32</span>
+</div>
+<!-- Metadata -->
+<div class="flex flex-col justify-between flex-1 min-w-0">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-1.5">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-primary font-label-sm text-[10px] leading-tight font-medium">Instagram</span>
+<span class="font-caption text-caption text-primary font-semibold">분석 완료</span>
+</div>
+<h3 class="font-headline-sm text-[15px] leading-snug text-on-surface font-semibold truncate">
+                겉바속촉 통밀 사워도우 성형 팁
+              </h3>
+</div>
+<p class="font-caption text-caption text-on-surface-variant">
+              핵심 팁 4개 · 굽기 온도 노트 생성됨
+            </p>
+</div>
+</div>
+<!-- Completed Bottom Action Link -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low">
+<div class="flex items-center gap-1 text-primary font-label-sm text-label-sm font-semibold">
+<span class="material-symbols-outlined text-[16px]">task_alt</span>
+<span>요약 및 챕터 태그 생성 완료</span>
+</div>
+<button class="inline-flex items-center gap-0.5 text-primary font-label-md text-label-md font-bold hover:underline" type="button">
+<span>요약 보기</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</article>
+<!-- Item 4: Failed (Error State) -->
+<article class="p-3.5 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col gap-3">
+<div class="flex gap-3">
+<!-- Thumbnail with Warning State -->
+<div class="relative w-16 h-20 rounded-lg overflow-hidden shrink-0 bg-surface-container flex items-center justify-center grayscale">
+<img class="w-full h-full object-cover opacity-50" data-alt="Moody dark minimalist abstract backdrop with subdued lavender shadows and modern editorial styling." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDdMTBlRzC3h4_vQK5m67kvSi2aBem8VOpLFReJ1mfZhiW4qGsIVPgtEMspNheMkgc-auChlC-o_OliShPgVaVz1edqCzXd2TArj4QBz-P9gT-_34dX6hj0ABmm-qx9yeVc5Y3I-zT8eXtxYEgosVqRnFonlCWt67ar0OBj8pVibWZMXQwD42x2Ax4DPqsm8HcAiY0TlbLIOZZ3L80G1n-QFfYay3uZIGa16wOumn4"/>
+<div class="absolute inset-0 bg-error-container/40 flex items-center justify-center">
+<span class="material-symbols-outlined text-error text-[22px]">error</span>
+</div>
+</div>
+<!-- Metadata -->
+<div class="flex flex-col justify-between flex-1 min-w-0">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-1.5">
+<span class="px-1.5 py-0.5 rounded bg-error-container text-on-error-container font-label-sm text-[10px] leading-tight font-semibold">
+                  분석 실패
+                </span>
+<span class="font-caption text-caption text-outline truncate">instagram.com/reel/D9x...</span>
+</div>
+<h3 class="font-headline-sm text-[14px] leading-snug text-error font-medium line-clamp-1">
+                비공개 계정 영상이거나 만료된 링크
+              </h3>
+</div>
+<p class="font-caption text-caption text-on-surface-variant line-clamp-1">
+              공개 링크인지 확인 후 다시 시도해 주세요.
+            </p>
+</div>
+</div>
+<!-- Retry and Delete Actions -->
+<div class="flex items-center justify-between gap-2 p-2 rounded-lg bg-surface-container-low">
+<button class="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md bg-surface-container-high text-primary font-label-sm text-label-sm font-semibold active:bg-surface-variant transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">replay</span>
+<span>다시 시도</span>
+</button>
+<button aria-label="삭제" class="w-8 h-8 rounded-md bg-surface-container-high text-on-surface-variant flex items-center justify-center hover:text-error active:bg-surface-variant transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</div>
+</article>
+</div>
+</section>
+<!-- Interactive Mini Script -->
+<script>
+    (function() {
+      const pasteBannerBtn = document.getElementById('clipboard-fill-btn');
+      const manualPasteBtn = document.getElementById('manual-paste-btn');
+      const input = document.getElementById('url-input');
+      const submitBtn = document.getElementById('submit-url-btn');
+
+      const sampleUrl = 'https://www.instagram.com/reel/C8x9Km1pL3q/';
+
+      function applyUrl() {
+        if (!input) return;
+        input.value = sampleUrl;
+        input.focus();
+      }
+
+      if (pasteBannerBtn) pasteBannerBtn.addEventListener('click', applyUrl);
+      if (manualPasteBtn) manualPasteBtn.addEventListener('click', applyUrl);
+
+      if (submitBtn) {
+        submitBtn.addEventListener('click', function() {
+          if (!input || !input.value.trim()) {
+            input.placeholder = '링크를 먼저 입력해주세요!';
+            input.focus();
+            return;
+          }
+          const prevHtml = submitBtn.innerHTML;
+          submitBtn.innerHTML = '<span class="material-symbols-outlined text-[20px] animate-spin">progress_activity</span><span>큐에 등록 중...</span>';
+          setTimeout(() => {
+            submitBtn.innerHTML = '<span class="material-symbols-outlined text-[20px]">check_circle</span><span>등록 완료!</span>';
+            setTimeout(() => {
+              submitBtn.innerHTML = prevHtml;
+              input.value = '';
+            }, 1200);
+          }, 800);
+        });
+      }
+    })();
+  </script>
+</div></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/85 backdrop-blur-xl border-t border-surface-variant/40" data-active-classes="text-primary font-semibold"><div class="h-16 max-w-[640px] mx-auto flex items-stretch justify-around px-space-xs"><a class="flex-1 flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-0.5 text-on-surface-variant transition-colors hover:text-primary" data-path="home" href="#"><span class="material-symbols-outlined text-[24px]">home</span><span class="font-label-sm text-label-sm">홈</span></a><a class="flex-1 flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-0.5 text-on-surface-variant transition-colors hover:text-primary" data-path="search" href="#"><span class="material-symbols-outlined text-[24px]">search</span><span class="font-label-sm text-label-sm">검색</span></a><a class="flex-1 flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-0.5 text-on-surface-variant transition-colors hover:text-primary" data-path="add" href="#"><span class="material-symbols-outlined text-[24px]">add_circle</span><span class="font-label-sm text-label-sm">추가</span></a><a class="flex-1 flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-0.5 text-on-surface-variant transition-colors hover:text-primary" data-path="settings" href="#"><span class="material-symbols-outlined text-[24px]">settings</span><span class="font-label-sm text-label-sm">설정</span></a></div></nav></body></html>

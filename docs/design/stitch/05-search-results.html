@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><title>Reelbox</title><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=Pretendard,+-apple-system,+BlinkMacSystemFont,+'Apple+SD+Gothic+Neo',+sans-serif:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "secondary-container": "#c8b6ff",
+          "surface": "#faf8ff",
+          "on-secondary": "#ffffff",
+          "inverse-surface": "#312e43",
+          "secondary-fixed-dim": "#cebdff",
+          "secondary": "#645495",
+          "surface-container-low": "#f7f1ff",
+          "error": "#ba1a1a",
+          "on-error": "#ffffff",
+          "primary-fixed-dim": "#c9bfff",
+          "background": "#faf8ff",
+          "surface-container-high": "#ebe5ff",
+          "inverse-on-surface": "#f4eeff",
+          "on-tertiary": "#ffffff",
+          "surface-variant": "#e5dffa",
+          "surface-tint": "#5e43d8",
+          "on-primary-fixed-variant": "#4523bf",
+          "on-primary-container": "#dcd4ff",
+          "surface-container": "#f1ebff",
+          "on-surface-variant": "#655e7a",
+          "surface-dim": "#ddd6f2",
+          "primary-fixed": "#e5deff",
+          "surface-bright": "#faf8ff",
+          "primary-container": "#5e43d8",
+          "surface-container-lowest": "#ffffff",
+          "on-primary-fixed": "#1a0063",
+          "on-primary": "#ffffff",
+          "inverse-primary": "#c9bfff",
+          "on-secondary-fixed": "#200d4e",
+          "on-secondary-container": "#544484",
+          "secondary-fixed": "#e8ddff",
+          "tertiary-fixed": "#e5deff",
+          "outline-variant": "#e5defa",
+          "tertiary-fixed-dim": "#c9bfff",
+          "on-tertiary-fixed": "#1a0063",
+          "on-error-container": "#93000a",
+          "on-tertiary-container": "#dcd4ff",
+          "outline": "#797586",
+          "primary": "#5e43d8",
+          "on-background": "#221f33",
+          "tertiary": "#451dc8",
+          "on-surface": "#221f33",
+          "on-tertiary-fixed-variant": "#441cc8",
+          "tertiary-container": "#5e40e0",
+          "on-secondary-fixed-variant": "#4c3c7c",
+          "error-container": "#ffdad6",
+          "surface-container-highest": "#e5dffa"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.25rem",
+          "lg": "0.5rem",
+          "xl": "0.75rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "gutter": "1rem",
+          "space-xl": "1.5rem",
+          "space-xs": "0.25rem",
+          "space-md": "0.75rem",
+          "margin": "1.25rem",
+          "space-lg": "1rem",
+          "space-sm": "0.5rem"
+        },
+        "fontFamily": {
+          "caption": ["\"Plus Jakarta Sans\"", "\"Pretendard\"", "sans-serif"],
+          "headline-md": ["\"Plus Jakarta Sans\"", "\"Pretendard\"", "sans-serif"],
+          "body-md": ["\"Plus Jakarta Sans\"", "\"Pretendard\"", "sans-serif"],
+          "label-md": ["\"Plus Jakarta Sans\"", "\"Pretendard\"", "sans-serif"],
+          "headline-sm": ["\"Plus Jakarta Sans\"", "\"Pretendard\"", "sans-serif"],
+          "headline-lg": ["\"Plus Jakarta Sans\"", "\"Pretendard\"", "sans-serif"],
+          "body-lg": ["\"Plus Jakarta Sans\"", "\"Pretendard\"", "sans-serif"],
+          "label-sm": ["\"Plus Jakarta Sans\"", "\"Pretendard\"", "sans-serif"],
+          "body-sm": ["\"Plus Jakarta Sans\"", "\"Pretendard\"", "sans-serif"],
+          "default": ["\"Plus Jakarta Sans\"", "\"Pretendard\"", "sans-serif"]
+        },
+        "fontSize": {
+          "caption": ["11px", { "lineHeight": "1.3", "letterSpacing": "0.02em", "fontWeight": "400" }],
+          "headline-md": ["21px", { "lineHeight": "1.45", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+          "body-md": ["15px", { "lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "400" }],
+          "label-md": ["13px", { "lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500" }],
+          "headline-sm": ["18px", { "lineHeight": "1.5", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+          "headline-lg": ["26px", { "lineHeight": "1.4", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+          "body-lg": ["16px", { "lineHeight": "1.65", "letterSpacing": "-0.005em", "fontWeight": "400" }],
+          "label-sm": ["12px", { "lineHeight": "1.35", "letterSpacing": "0.02em", "fontWeight": "500" }],
+          "body-sm": ["14px", { "lineHeight": "1.55", "letterSpacing": "0em", "fontWeight": "400" }]
+        }
+      }
+    }
+  };
+</script><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;font-family:"Plus Jakarta Sans", "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head><body class="bg-[#FAF8FF] font-body-md text-[#221F33] antialiased flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-[#FAF8FF]/85 backdrop-blur-xl border-b border-[#E5DEFA]/50 shadow-[0_1px_8px_rgba(94,67,216,0.03)]"><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="w-8 h-8 rounded-lg bg-[#5E43D8] flex items-center justify-center shadow-sm"><span class="material-symbols-outlined text-white text-[20px]">auto_stories</span></div><span class="font-headline-sm text-headline-sm text-[#221F33] font-bold tracking-tight">Reelbox</span></div><div class="flex items-center gap-space-sm"><div class="h-6 px-space-sm rounded-full bg-white border border-[#E5DEFA] flex items-center gap-1.5 shadow-[0_1px_4px_rgba(0,0,0,0.02)]"><span class="w-2 h-2 rounded-full bg-[#10b981] animate-pulse"></span><span class="font-caption text-caption text-[#655E7A] font-medium">PC 연결됨</span></div><div class="w-8 h-8 rounded-full bg-[#5E43D8] flex items-center justify-center text-white"><span class="material-symbols-outlined text-white text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full pt-16 pb-24 bg-[#FAF8FF] max-w-[640px] mx-auto min-h-screen px-margin"><div class="flex flex-col w-full">
+<!-- Search Input Area -->
+<div class="flex items-center gap-space-sm pt-space-xs pb-space-sm">
+<div class="flex-1 flex items-center h-12 px-space-md bg-white rounded-xl border border-[#E5DEFA] shadow-[0_2px_8px_rgba(94,67,216,0.04)] focus-within:border-[#5E43D8] transition-colors">
+<span class="material-symbols-outlined text-[#797586] text-[20px] select-none">search</span>
+<input class="flex-1 bg-transparent px-space-sm font-body-md text-body-md text-[#221F33] placeholder:text-[#797586] focus:outline-none" id="search-input" placeholder="보관된 쇼츠, 레시피 검색" type="text" value="파스타"/>
+<button aria-label="검색어 지우기" class="w-7 h-7 rounded-full flex items-center justify-center text-[#797586] hover:text-[#221F33] hover:bg-[#F1EDFC] transition-colors" id="clear-search" type="button">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+<!-- Filter Toggle Button with Badge Indicator -->
+<button aria-label="상세 필터 옵션" class="relative h-12 w-12 rounded-xl bg-white border border-[#E5DEFA] flex items-center justify-center shadow-[0_2px_8px_rgba(94,67,216,0.04)] text-[#221F33] hover:border-[#5E43D8] transition-all active:scale-95" id="filter-trigger" type="button">
+<span class="material-symbols-outlined text-[20px]">tune</span>
+<span class="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-[#5E43D8]"></span>
+</button>
+</div>
+<!-- Active Filter Chips Row -->
+<div class="flex items-center gap-space-xs overflow-x-auto pb-space-sm pt-space-xs no-scrollbar">
+<div class="inline-flex items-center gap-1 h-8 pl-space-md pr-space-xs bg-[#C8B6FF] rounded-full text-[#1A0063] font-medium shadow-sm flex-shrink-0">
+<span class="font-label-sm text-label-sm font-semibold">유튜브</span>
+<button aria-label="유튜브 필터 해제" class="w-5 h-5 rounded-full flex items-center justify-center hover:bg-black/10 transition-colors" type="button">
+<span class="material-symbols-outlined text-[13px]">close</span>
+</button>
+</div>
+<div class="inline-flex items-center gap-1 h-8 pl-space-md pr-space-xs bg-[#C8B6FF] rounded-full text-[#1A0063] font-medium shadow-sm flex-shrink-0">
+<span class="font-label-sm text-label-sm font-semibold">요리</span>
+<button aria-label="요리 필터 해제" class="w-5 h-5 rounded-full flex items-center justify-center hover:bg-black/10 transition-colors" type="button">
+<span class="material-symbols-outlined text-[13px]">close</span>
+</button>
+</div>
+<div class="inline-flex items-center gap-1 h-8 pl-space-md pr-space-xs bg-[#C8B6FF] rounded-full text-[#1A0063] font-medium shadow-sm flex-shrink-0">
+<span class="font-label-sm text-label-sm font-semibold">최근 1개월</span>
+<button aria-label="기간 필터 해제" class="w-5 h-5 rounded-full flex items-center justify-center hover:bg-black/10 transition-colors" type="button">
+<span class="material-symbols-outlined text-[13px]">close</span>
+</button>
+</div>
+<button class="h-8 px-space-sm rounded-full flex items-center gap-1 text-[#655E7A] hover:text-[#221F33] hover:bg-[#F1EDFC] transition-colors flex-shrink-0 ml-1" type="button">
+<span class="material-symbols-outlined text-[14px]">restart_alt</span>
+<span class="font-label-sm text-label-sm font-medium">초기화</span>
+</button>
+</div>
+<!-- Result Counter & Sort Controls -->
+<div class="flex items-center justify-between py-space-sm">
+<div class="flex items-center gap-1">
+<span class="font-label-md text-label-md text-[#655E7A] font-medium">검색 결과</span>
+<span class="font-label-md text-label-md text-[#5E43D8] font-bold">12개</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<button class="flex items-center gap-0.5 px-space-sm py-1 rounded-lg bg-white border border-[#E5DEFA] text-[#221F33] font-label-sm text-label-sm font-medium hover:bg-[#F1EDFC] transition-colors" type="button">
+<span>정확도순</span>
+<span class="material-symbols-outlined text-[16px] text-[#797586]">expand_more</span>
+</button>
+</div>
+</div>
+<!-- Video Archive List -->
+<div class="flex flex-col gap-space-md mt-space-xs">
+<!-- Card 1 -->
+<article class="group relative flex flex-col bg-white border border-[#E5DEFA] rounded-xl p-space-md shadow-[0_2px_10px_rgba(94,67,216,0.03)] hover:border-[#C8B6FF] transition-all hover:shadow-[0_4px_16px_rgba(94,67,216,0.08)] cursor-pointer">
+<div class="flex gap-space-md items-start">
+<!-- Thumbnail column (9:16 vertical ratio) -->
+<div class="relative w-20 aspect-[9/16] rounded-lg overflow-hidden bg-[#F1EDFC] flex-shrink-0 shadow-inner">
+<img class="w-full h-full object-cover" data-alt="A warm top-down aesthetic shot of a sizzling one-pan tomato basil pasta in a black cast iron skillet, rustic wooden kitchen table, warm ambient morning light, garnished with fresh vibrant green basil and grated parmesan." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDsL0bLUy3a53po3NgeXNGKXUVLzsUPGk6mgul5oIq2g-ahzzSxTrZEH7HREg7QSXrJqcDhSdlSZ9Wx6nffQEhOEBlA9oF6Dxc9FoOPB7K4Yth4v0DF4qydPkG41KexIdfLbg6ydyz6oswiEbYuz4XcYXSQ-22LKaerexiAFK200-wAetJ2SIWG5h8zmlqwAxGQ2OYwc3U2ZXndMIUCxIPlCP5-aSONDU3IUicniuE"/>
+<div class="absolute top-1 left-1 w-5 h-5 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-xs">
+<span class="material-symbols-outlined text-[13px] text-[#ba1a1a]">smart_display</span>
+</div>
+<div class="absolute bottom-1 right-1 px-1 rounded bg-[#312e43]/85 backdrop-blur-xs text-[#f4eeff] font-caption text-caption font-medium tracking-tight">
+            0:52
+          </div>
+</div>
+<!-- Content Area -->
+<div class="flex-1 min-w-0 flex flex-col justify-between self-stretch">
+<div>
+<div class="flex items-center gap-space-xs mb-1">
+<span class="px-2 py-0.5 rounded-full bg-[#F1EDFC] text-[#5E43D8] font-caption text-caption font-semibold">요리</span>
+<span class="text-[#797586] font-caption text-caption">·</span>
+<span class="text-[#655E7A] font-caption text-caption">쿠킹로그</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-[#221F33] font-semibold tracking-tight line-clamp-2 leading-tight">
+              원팬 토마토 바질 생면 파스타 초간단 레시피
+            </h2>
+</div>
+<!-- AI Summary Callout -->
+<div class="my-space-xs p-2 rounded-lg bg-[#FAF8FF] border border-[#E5DEFA]/70 flex items-start gap-1.5">
+<span class="material-symbols-outlined text-[#5E43D8] text-[15px] mt-0.5 flex-shrink-0" style="font-variation-settings: 'FILL' 1;">arrow_back_ios_new</span>
+<p class="font-body-sm text-body-sm text-[#655E7A] line-clamp-2 leading-snug">
+<strong class="text-[#221F33] font-medium">AI 요약:</strong> 방울토마토 으깨며 면수 유화(에멀전)를 유도하는 것이 풍미의 핵심. 설탕 대신 발사믹 한 방울로 산미 조절.
+            </p>
+</div>
+<!-- Metadata & Direct Open Button -->
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm text-[#655E7A]">
+<span class="flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[13px] text-[#797586]">schedule</span>
+                2주 전
+              </span>
+<span>•</span>
+<span>10.4만회 저장</span>
+</div>
+<!-- External App Launcher Pill -->
+<button aria-label="유튜브 쇼츠에서 원본 보기" class="w-8 h-8 rounded-full bg-[#F1EDFC] flex items-center justify-center text-[#5E43D8] hover:bg-[#5E43D8] hover:text-white transition-all active:scale-95 shadow-sm" onclick="event.stopPropagation()" title="원본 앱 열기" type="button">
+<span class="material-symbols-outlined text-[17px]" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+</div>
+</div>
+</article>
+<!-- Card 2 -->
+<article class="group relative flex flex-col bg-white border border-[#E5DEFA] rounded-xl p-space-md shadow-[0_2px_10px_rgba(94,67,216,0.03)] hover:border-[#C8B6FF] transition-all hover:shadow-[0_4px_16px_rgba(94,67,216,0.08)] cursor-pointer">
+<div class="flex gap-space-md items-start">
+<!-- Thumbnail column (9:16 vertical ratio) -->
+<div class="relative w-20 aspect-[9/16] rounded-lg overflow-hidden bg-[#F1EDFC] flex-shrink-0 shadow-inner">
+<img class="w-full h-full object-cover" data-alt="Golden glistened aglio e olio pasta swirled in an artisan white ceramic bowl, crisp garlic chips on top, parsley specks, warm gentle sunlight on a marble kitchen countertop with a bottle of extra virgin olive oil in soft background focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQIYtn4BI-ZoGzmRg9xWREDJXg8WQJYrMhV3ivoSOdszGCjAJevhxwjhsWERJ9l2F_yG0x2uc8wXIW464-Uae-C-VnIQL5Uvc6Cz3LymX_ogo4K30s2vqcsAiSk9Spiz1hRnOFqxIn-7ESALO4uM5LcfivOLBvXzGyXPrtt2E3Ka6u8v35kDtpBWuBcqQ5xR5JZK4hXkg5i6Kf1gIR_G9RYuBx286pfH7potFZoFE"/>
+<div class="absolute top-1 left-1 w-5 h-5 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-xs">
+<span class="material-symbols-outlined text-[13px] text-[#ba1a1a]">smart_display</span>
+</div>
+<div class="absolute bottom-1 right-1 px-1 rounded bg-[#312e43]/85 backdrop-blur-xs text-[#f4eeff] font-caption text-caption font-medium tracking-tight">
+            0:45
+          </div>
+</div>
+<!-- Content Area -->
+<div class="flex-1 min-w-0 flex flex-col justify-between self-stretch">
+<div>
+<div class="flex items-center gap-space-xs mb-1">
+<span class="px-2 py-0.5 rounded-full bg-[#F1EDFC] text-[#5E43D8] font-caption text-caption font-semibold">요리</span>
+<span class="text-[#797586] font-caption text-caption">·</span>
+<span class="text-[#655E7A] font-caption text-caption">오스테리아 김셰프</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-[#221F33] font-semibold tracking-tight line-clamp-2 leading-tight">
+              실패 없는 마늘 오일 알리오 올리오 비법
+            </h2>
+</div>
+<!-- AI Summary Callout -->
+<div class="my-space-xs p-2 rounded-lg bg-[#FAF8FF] border border-[#E5DEFA]/70 flex items-start gap-1.5">
+<span class="material-symbols-outlined text-[#5E43D8] text-[15px] mt-0.5 flex-shrink-0" style="font-variation-settings: 'FILL' 1;">arrow_back_ios_new</span>
+<p class="font-body-sm text-body-sm text-[#655E7A] line-clamp-2 leading-snug">
+<strong class="text-[#221F33] font-medium">AI 요약:</strong> 마늘은 반드시 찬 팬에서 약불로 올리브유와 함께 가열 시작. 면수 한 국자와 강한 젓기로 크림처럼 끈적한 오일 코팅 완성.
+            </p>
+</div>
+<!-- Metadata & Direct Open Button -->
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm text-[#655E7A]">
+<span class="flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[13px] text-[#797586]">schedule</span>
+                어제
+              </span>
+<span>•</span>
+<span>4.8만회 저장</span>
+</div>
+<button aria-label="유튜브 쇼츠에서 원본 보기" class="w-8 h-8 rounded-full bg-[#F1EDFC] flex items-center justify-center text-[#5E43D8] hover:bg-[#5E43D8] hover:text-white transition-all active:scale-95 shadow-sm" onclick="event.stopPropagation()" title="원본 앱 열기" type="button">
+<span class="material-symbols-outlined text-[17px]" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+</div>
+</div>
+</article>
+<!-- Card 3 -->
+<article class="group relative flex flex-col bg-white border border-[#E5DEFA] rounded-xl p-space-md shadow-[0_2px_10px_rgba(94,67,216,0.03)] hover:border-[#C8B6FF] transition-all hover:shadow-[0_4px_16px_rgba(94,67,216,0.08)] cursor-pointer">
+<div class="flex gap-space-md items-start">
+<!-- Thumbnail column (9:16 vertical ratio) -->
+<div class="relative w-20 aspect-[9/16] rounded-lg overflow-hidden bg-[#F1EDFC] flex-shrink-0 shadow-inner">
+<img class="w-full h-full object-cover" data-alt="Creamy cod roe mentaiko pasta served with microgreens and finely shredded nori seaweed strips, served in a matte neutral earthen bowl, moody soft Japanese Nordic interior styling, gentle natural daylight." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-hHpYyRFDfhqm9cu4AoP9u62aSKD92evrvWo0fZ5vE4Xf1d6_8gmyEUGxOT0SMSuELTVw7j7BVV_T2dqdzfrssFrRb1eKa5O9Eke_fmLoqg97IfJuBJXWq0otV3ye69bfVA4Akh14xwFpkw0FeMjitfDe-PRCPjr_KUqmkJsgS9D0Po7Cn_cst6fGVzcmvnS-WJmUd4O3nnvxU80gtJyq8DKqEKDEYXRYPS9etoU"/>
+<div class="absolute top-1 left-1 w-5 h-5 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-xs">
+<span class="material-symbols-outlined text-[13px] text-[#5e43d8]">photo_camera</span>
+</div>
+<div class="absolute bottom-1 right-1 px-1 rounded bg-[#312e43]/85 backdrop-blur-xs text-[#f4eeff] font-caption text-caption font-medium tracking-tight">
+            1:02
+          </div>
+</div>
+<!-- Content Area -->
+<div class="flex-1 min-w-0 flex flex-col justify-between self-stretch">
+<div>
+<div class="flex items-center gap-space-xs mb-1">
+<span class="px-2 py-0.5 rounded-full bg-[#F1EDFC] text-[#5E43D8] font-caption text-caption font-semibold">요리</span>
+<span class="text-[#797586] font-caption text-caption">·</span>
+<span class="text-[#655E7A] font-caption text-caption">소소식탁</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-[#221F33] font-semibold tracking-tight line-clamp-2 leading-tight">
+              버터 갈릭 명란 파스타 5분 초간단 완성
+            </h2>
+</div>
+<!-- AI Summary Callout -->
+<div class="my-space-xs p-2 rounded-lg bg-[#FAF8FF] border border-[#E5DEFA]/70 flex items-start gap-1.5">
+<span class="material-symbols-outlined text-[#5E43D8] text-[15px] mt-0.5 flex-shrink-0" style="font-variation-settings: 'FILL' 1;">arrow_back_ios_new</span>
+<p class="font-body-sm text-body-sm text-[#655E7A] line-clamp-2 leading-snug">
+<strong class="text-[#221F33] font-medium">AI 요약:</strong> 명란알은 열을 가하지 않고 마지막 버터 잔열에만 버무려야 떫은맛과 퍽퍽함 방지. 깻잎 채 썰어 올리기.
+            </p>
+</div>
+<!-- Metadata & Direct Open Button -->
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm text-[#655E7A]">
+<span class="flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[13px] text-[#797586]">schedule</span>
+                3일 전
+              </span>
+<span>•</span>
+<span>2.1만회 저장</span>
+</div>
+<button aria-label="인스타그램 릴스에서 원본 보기" class="w-8 h-8 rounded-full bg-[#F1EDFC] flex items-center justify-center text-[#5E43D8] hover:bg-[#5E43D8] hover:text-white transition-all active:scale-95 shadow-sm" onclick="event.stopPropagation()" title="원본 앱 열기" type="button">
+<span class="material-symbols-outlined text-[17px]" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+</div>
+</div>
+</article>
+<!-- Card 4 -->
+<article class="group relative flex flex-col bg-white border border-[#E5DEFA] rounded-xl p-space-md shadow-[0_2px_10px_rgba(94,67,216,0.03)] hover:border-[#C8B6FF] transition-all hover:shadow-[0_4px_16px_rgba(94,67,216,0.08)] cursor-pointer">
+<div class="flex gap-space-md items-start">
+<!-- Thumbnail column (9:16 vertical ratio) -->
+<div class="relative w-20 aspect-[9/16] rounded-lg overflow-hidden bg-[#F1EDFC] flex-shrink-0 shadow-inner">
+<img class="w-full h-full object-cover" data-alt="Traditional authentic Italian carbonara with guanciale cubes and cracked black pepper, glossy rich yellow egg yolk sauce clinging to thick spaghetti strands, photographed on an artisanal ceramic plate with warm wooden table ambiance." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhOwE7xzkXjCSHGRHcEkjpWrcUI09haivHMuTE1qVrzuPG5ydcIgz9qNAoN-Dw1E0kaAeTX7q3DrGrTYkfImlefd-5xTqFSbk7hLKGNGPwhkM-LWdtFgJA5K-rasUZQ1F5T-XlE0K7Idpd0DUavh3C6iBsQwXiLYNkzyuXEaRLAjLuFPQT19cyBSM1Lhcwmr3E7xPnwrpceX0clYOSPZRDFBGWFx2iFOkkvqu9FCo"/>
+<div class="absolute top-1 left-1 w-5 h-5 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-xs">
+<span class="material-symbols-outlined text-[13px] text-[#ba1a1a]">smart_display</span>
+</div>
+<div class="absolute bottom-1 right-1 px-1 rounded bg-[#312e43]/85 backdrop-blur-xs text-[#f4eeff] font-caption text-caption font-medium tracking-tight">
+            0:38
+          </div>
+</div>
+<!-- Content Area -->
+<div class="flex-1 min-w-0 flex flex-col justify-between self-stretch">
+<div>
+<div class="flex items-center gap-space-xs mb-1">
+<span class="px-2 py-0.5 rounded-full bg-[#F1EDFC] text-[#5E43D8] font-caption text-caption font-semibold">요리</span>
+<span class="text-[#797586] font-caption text-caption">·</span>
+<span class="text-[#655E7A] font-caption text-caption">파스타랩 Lab</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-[#221F33] font-semibold tracking-tight line-clamp-2 leading-tight">
+              생크림 없이 꾸덕한 정통 까르보나라
+            </h2>
+</div>
+<!-- AI Summary Callout -->
+<div class="my-space-xs p-2 rounded-lg bg-[#FAF8FF] border border-[#E5DEFA]/70 flex items-start gap-1.5">
+<span class="material-symbols-outlined text-[#5E43D8] text-[15px] mt-0.5 flex-shrink-0" style="font-variation-settings: 'FILL' 1;">arrow_back_ios_new</span>
+<p class="font-body-sm text-body-sm text-[#655E7A] line-clamp-2 leading-snug">
+<strong class="text-[#221F33] font-medium">AI 요약:</strong> 불을 끈 상태에서 계란노른자+페코리노 치즈 혼합물을 붓고 잔열로만 소스를 코팅해야 스크램블 에그 참사 방지.
+            </p>
+</div>
+<!-- Metadata & Direct Open Button -->
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm text-[#655E7A]">
+<span class="flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[13px] text-[#797586]">schedule</span>
+                1주 전
+              </span>
+<span>•</span>
+<span>7.9만회 저장</span>
+</div>
+<button aria-label="유튜브 쇼츠에서 원본 보기" class="w-8 h-8 rounded-full bg-[#F1EDFC] flex items-center justify-center text-[#5E43D8] hover:bg-[#5E43D8] hover:text-white transition-all active:scale-95 shadow-sm" onclick="event.stopPropagation()" title="원본 앱 열기" type="button">
+<span class="material-symbols-outlined text-[17px]" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+</div>
+</div>
+</article>
+</div>
+<!-- Bottom Explanatory Hint -->
+<div class="flex items-center justify-center gap-1.5 py-space-xl px-space-md text-center">
+<span class="material-symbols-outlined text-[16px] text-[#797586]">info</span>
+<p class="font-caption text-caption text-[#655E7A]">
+      카드를 탭하면 요약 상세 노트가 열리고, <span class="font-semibold text-[#5E43D8]">▶ 버튼</span>을 누르면 원본 앱으로 이동합니다.
+    </p>
+</div>
+</div>
+<script>
+  // Ensure the bottom navigation bar reflects the Search tab state
+  (function updateActiveTab() {
+    const navLinks = document.querySelectorAll('nav a[data-path]');
+    navLinks.forEach(link => {
+      if (link.getAttribute('data-path') === 'search') {
+        link.classList.remove('text-[#655E7A]');
+        link.classList.add('text-[#5E43D8]', 'font-semibold');
+      } else {
+        link.classList.remove('text-[#5E43D8]', 'font-semibold');
+        link.classList.add('text-[#655E7A]');
+      }
+    });
+
+    // Clear input handling
+    const clearBtn = document.getElementById('clear-search');
+    const searchInput = document.getElementById('search-input');
+    if (clearBtn && searchInput) {
+      clearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        searchInput.focus();
+      });
+    }
+  })();
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-[#FAF8FF]/85 backdrop-blur-xl border-t border-[#E5DEFA]" data-active-classes="text-[#5E43D8] font-semibold"><div class="h-16 max-w-[640px] mx-auto flex items-stretch justify-around px-space-xs"><a class="flex-1 flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-0.5 text-[#655E7A] transition-colors" data-path="home" href="#"><span class="material-symbols-outlined text-[24px]">home</span><span class="font-label-sm text-label-sm">홈</span></a><a class="flex-1 flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-0.5 text-[#5E43D8] font-semibold transition-colors" data-path="search" href="#"><span class="material-symbols-outlined text-[24px]">search</span><span class="font-label-sm text-label-sm">검색</span></a><a class="flex-1 flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-0.5 text-[#655E7A] transition-colors" data-path="add" href="#"><span class="material-symbols-outlined text-[24px]">add_circle</span><span class="font-label-sm text-label-sm">추가</span></a><a class="flex-1 flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-0.5 text-[#655E7A] transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[24px]">settings</span><span class="font-label-sm text-label-sm">설정</span></a></div></nav></body></html>

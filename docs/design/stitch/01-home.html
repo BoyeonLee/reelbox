@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><title>Reelbox</title><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;family=Pretendard:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "secondary-container": "#c8b6ff",
+        "surface": "#FAF8FF",
+        "on-secondary": "#ffffff",
+        "inverse-surface": "#312e43",
+        "secondary-fixed-dim": "#cebdff",
+        "secondary": "#5E43D8",
+        "surface-container-low": "#F1EDFC",
+        "error": "#ba1a1a",
+        "on-error": "#ffffff",
+        "primary-fixed-dim": "#c9bfff",
+        "background": "#FAF8FF",
+        "surface-container-high": "#ebe5ff",
+        "inverse-on-surface": "#f4eeff",
+        "on-tertiary": "#ffffff",
+        "surface-variant": "#E5DEFA",
+        "surface-tint": "#5e43d8",
+        "on-primary-fixed-variant": "#4523bf",
+        "on-primary-container": "#dcd4ff",
+        "surface-container": "#F1EDFC",
+        "on-surface-variant": "#655E7A",
+        "surface-dim": "#ddd6f2",
+        "primary-fixed": "#e5deff",
+        "surface-bright": "#FAF8FF",
+        "primary-container": "#5E43D8",
+        "surface-container-lowest": "#ffffff",
+        "on-primary-fixed": "#1a0063",
+        "on-primary": "#ffffff",
+        "inverse-primary": "#c9bfff",
+        "on-secondary-fixed": "#200d4e",
+        "on-secondary-container": "#544484",
+        "secondary-fixed": "#e8ddff",
+        "tertiary-fixed": "#e5deff",
+        "outline-variant": "#E5DEFA",
+        "tertiary-fixed-dim": "#c9bfff",
+        "on-tertiary-fixed": "#1a0063",
+        "on-error-container": "#93000a",
+        "on-tertiary-container": "#dcd4ff",
+        "outline": "#8D879F",
+        "primary": "#5E43D8",
+        "on-background": "#221F33",
+        "tertiary": "#451dc8",
+        "on-surface": "#221F33",
+        "on-tertiary-fixed-variant": "#441cc8",
+        "tertiary-container": "#5e40e0",
+        "on-secondary-fixed-variant": "#4c3c7c",
+        "error-container": "#ffdad6",
+        "surface-container-highest": "#E5DEFA"
+      },
+      borderRadius: {
+        "DEFAULT": "0.25rem",
+        "lg": "0.5rem",
+        "xl": "0.75rem",
+        "full": "9999px"
+      },
+      spacing: {
+        "gutter": "1rem",
+        "space-xl": "2rem",
+        "space-xs": "0.25rem",
+        "space-md": "1rem",
+        "margin": "1rem",
+        "space-lg": "1.5rem",
+        "space-sm": "0.5rem"
+      },
+      fontFamily: {
+        "body-sm": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "body-md": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "display-lg": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "body-lg": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "label-sm": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "label-lg": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "headline-sm": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "headline-lg": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "headline-md": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "label-md": ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+        "caption": ["Plus Jakarta Sans", "Pretendard", "sans-serif"]
+      },
+      fontSize: {
+        "body-sm": ["13px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+        "body-md": ["14px", { "lineHeight": "22px", "letterSpacing": "0.005em", "fontWeight": "400" }],
+        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+        "body-lg": ["16px", { "lineHeight": "26px", "letterSpacing": "0em", "fontWeight": "400" }],
+        "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.03em", "fontWeight": "500" }],
+        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+        "headline-sm": ["18px", { "lineHeight": "26px", "letterSpacing": "-0.005em", "fontWeight": "600" }],
+        "headline-lg": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+        "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+        "caption": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500" }]
+      }
+    }
+  }
+};</script><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;font-family:"Plus Jakarta Sans", "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head><body class="bg-surface font-body-md text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl border-b border-surface-variant/40"><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="w-8 h-8 rounded-lg bg-primary-container flex items-center justify-center shadow-sm"><span class="material-symbols-outlined text-on-primary text-[20px]">auto_stories</span></div><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight">Reelbox</span></div><div class="flex items-center gap-space-sm"><div class="h-6 px-space-sm rounded-full bg-surface-container-low border border-surface-variant flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><span class="font-caption text-caption text-on-surface-variant font-medium">PC 연결됨</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-sm"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full pt-16 pb-24 bg-surface max-w-[640px] mx-auto min-h-screen px-margin"><div class="flex flex-col w-full pb-8">
+<!-- Status & Welcome Section -->
+<div class="flex flex-col gap-space-sm pt-space-xs mb-space-md">
+<div class="flex items-center justify-between">
+<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-low border border-surface-variant/60 shadow-xs">
+<span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+<span class="font-caption text-caption text-primary font-medium tracking-wide">PC 실시간 동기화됨</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant">오늘 14:28 기준</span>
+</div>
+<div class="flex flex-col mt-0.5">
+<h1 class="font-headline-md text-headline-md text-on-surface tracking-tight">보관함</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">내가 차곡차곡 모아둔 <span class="font-label-md text-primary font-semibold">142개</span>의 숏폼 지식</p>
+</div>
+</div>
+<!-- Search Input Container -->
+<div class="relative w-full mb-space-xl">
+<div class="w-full min-h-[48px] rounded-xl bg-surface-container-lowest border border-surface-variant shadow-sm flex items-center px-4 py-3 gap-space-sm transition-all focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary">
+<span class="material-symbols-outlined text-outline text-[20px] shrink-0">search</span>
+<input class="w-full bg-transparent text-on-surface placeholder:text-outline text-body-md font-body-md focus:outline-none" placeholder="기억나는 대로 검색해 보세요 (예: 버터 파스타)" type="search"/>
+<button aria-label="음성 검색" class="w-8 h-8 rounded-lg flex items-center justify-center text-outline hover:text-on-surface transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">mic</span>
+</button>
+</div>
+</div>
+<!-- Section 1: Topics (주제) -->
+<section class="flex flex-col mb-space-xl">
+<div class="flex items-baseline justify-between mb-space-md">
+<div class="flex items-center gap-space-xs">
+<h2 class="font-headline-sm text-headline-sm text-on-surface tracking-tight">주제</h2>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">6개 카테고리</span>
+</div>
+<button class="font-label-md text-label-md text-primary font-medium hover:underline flex items-center gap-0.5" type="button">
+        전체보기
+        <span class="material-symbols-outlined text-[14px]">arrow_forward_ios</span>
+</button>
+</div>
+<!-- 2-Column Grid -->
+<div class="grid grid-cols-2 gap-space-sm w-full">
+<!-- Topic Card 1: 요리 -->
+<article class="bg-surface-container-lowest border border-surface-variant rounded-xl p-3 shadow-sm flex flex-col justify-between hover:border-secondary-container hover:shadow-md transition-all group cursor-pointer">
+<div class="grid grid-cols-3 gap-1.5 h-20 mb-3 rounded-lg overflow-hidden">
+<div class="col-span-2 h-full rounded-md overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Close up warm photography of a sizzling gourmet skillet meal with golden brown butter herbs and steaming fresh pasta, soft ambient culinary lighting, aesthetic editorial food style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCr7x4NiPaTOdD2zLQAZqKywzKbm567APO4CSRR-79AqHR7MYYYc_iR3aob-qvSO5v4vWrxlPy2i8H54L2ZBFstW5N3XAoc6U_2lvY7TFE4-DEwvn1rRZzzIbk-3zdhqy4uk5_PGbI0-NqPjzA1w2vVa2YxCnqoUgq9RalCZSkIlyJAyTKfe9dlFjKYerTsD1PjlYgjUGgldoIBb5FCgqnzKq4sL-d5x5l1a0WaSOs"/>
+</div>
+<div class="flex flex-col gap-1.5 h-full">
+<div class="h-full rounded-md overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Artisanal sourdough bread cut open showing airy crumb beside fresh rosemary and sea salt butter, bright natural morning studio light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3G4EDZCp1y2qG5P2pux4BZhWS-ZuYkz8Gefaf9QBGd8AjKXmgYMCIc6nffctc-T3zyvpcvqdrHskWlFUW2dq1lTa-NhsDXoX8fRjz3uuPwHzls4SW1kZC7Tslwd_V7Xb8YBq6JmxWv0ZNQb3y6sVUtF5qWLPo1crrvv8FIVynOxHxQpv-5fvhpOYOkoCUvfZ04chCQapDe_nB91qSExJuDTbN7jd4AOIr6eKdsXU"/>
+</div>
+<div class="h-full rounded-md overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Diced fresh organic vegetables on a rustic wooden cutting board with warm sunlight casting gentle shadows, minimal aesthetic cooking archive" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAW7rmvidRCjL1wTvldzawl2C3lunBQp76cZ-mMlqDKy5ZmC9QGJsMxz_8duv4iMOWiNhR7iqYiGt1BVbveLYfh5p6MAR6QngfhJCKK6eiL5umUayBfnrgsWbVl1ep_2ATtT543x6qjgjYDH29gtV3KHAywSiiu6K0wuGDuPNQt48XWcc_mm5R8FYv8PGsBb16PO-G7bzqTmXVJs7hYbk15TAy4ID6kALKi01wCXIk"/>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-body-lg text-on-surface font-semibold tracking-tight">요리</span>
+<span class="font-caption text-caption px-2 py-0.5 rounded-full bg-surface-container-low text-primary font-medium border border-surface-variant/70">38개</span>
+</div>
+</article>
+<!-- Topic Card 2: 운동 & 홈트 -->
+<article class="bg-surface-container-lowest border border-surface-variant rounded-xl p-3 shadow-sm flex flex-col justify-between hover:border-secondary-container hover:shadow-md transition-all group cursor-pointer">
+<div class="grid grid-cols-3 gap-1.5 h-20 mb-3 rounded-lg overflow-hidden">
+<div class="col-span-2 h-full rounded-md overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A serene minimalist yoga studio scene with an athlete in gentle back stretch pose on a neutral toned eco mat, warm tranquil natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCl8lgwzl_38P-nKQL_rKfRyg2UWFJdGYdn0sWu1PL7XY71ZEYreNNCsodbA5Nl_iTZ0Rp_Md90VpZZIf7dEOj_rB8p3n0BQjsIY10e_MhqHDuvgK6drot6w2hlDAGCqjf2RT8JHcC8ujEscdUz5e45-20l85L6pXm4Xj-UpYoJvQLwZiZKRvw17BHfgp_Q8Ee8YxtMn2TU8-7pD5QHETHuMJrTVfU9SzScxV2320E"/>
+</div>
+<div class="flex flex-col gap-1.5 h-full">
+<div class="h-full rounded-md overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Close-up of matte textured kettlebells resting neatly beside resistance bands in a warm quiet home gym space" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBCcvbp2XXMh-Z9N83zjOwC1CcnSHeXtwdGU5Pj2iLCYf9tF_8P3-vB2VdMiUOOSRDVPmifVEMv9_LqGc7UDoMun3l5hBwHd1euFoIgkJH3bkixdMwOdrxknFibTeTN_3UcypHPwe0A9PUqamB9yrkmTaUJIpAJfm0TuC9nzEyYOc2AozJ8M7UzDJt4KgeanG5jVIOyXkogRU9CkdryjjFmjNikbr0ubTiFmHTPZOo"/>
+</div>
+<div class="h-full rounded-md overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Runner stretching Achilles tendon outdoors in an urban botanical park during soft sunrise golden hour" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCi4EyW684dhjby9JSzBCZigXe0rZ9gQ39faHi_xtpNVL_LMuQklFX-FKNUU1oTabexg3-3c8cc1KJ4bG92pS_lEnzupP5ceT-_3o2FD57Ey_tifylvyizkyd0QnV3ayAhzk0_kJD4ok-7OYGHp5GMUb05CO4aTWqFb0nfr6L-F4EQgzi_KwNO9MzkXGSf2vcHB2FU2sPkMgyUHAfo1b8bmSE2tSPHRY-lGvAQMUh0"/>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-body-lg text-on-surface font-semibold tracking-tight">운동 &amp; 홈트</span>
+<span class="font-caption text-caption px-2 py-0.5 rounded-full bg-surface-container-low text-primary font-medium border border-surface-variant/70">24개</span>
+</div>
+</article>
+<!-- Topic Card 3: 개발 & 기술 -->
+<article class="bg-surface-container-lowest border border-surface-variant rounded-xl p-3 shadow-sm flex flex-col justify-between hover:border-secondary-container hover:shadow-md transition-all group cursor-pointer">
+<div class="grid grid-cols-3 gap-1.5 h-20 mb-3 rounded-lg overflow-hidden">
+<div class="col-span-2 h-full rounded-md overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Ultra clean mechanical keyboard and vertical monitor displaying sleek syntax-highlighted code in a cozy Scandinavian desk setting with ambient lamp glow" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-UOMIAJJzM591Gm1YJcaHqOik5n9kmJ6g-j6woL9vcYUEyD6D6BsyVTxkVMLBK57mmsPHLXVC_C59tdPfsC6DEmGyc-RNUsf-fiCkZ42xt-ohSBmn8wrmq22SCT7zLNp3UEjh0nBzf6Vb6sYyjs3zNop49jc2L8c7WkQKurXPTdrX0DU5rym86aGMN2fGcH6dmCyP3pWVs0AWgkOgIhTe2JHCkf7xC0G-k3COiz8"/>
+</div>
+<div class="flex flex-col gap-1.5 h-full">
+<div class="h-full rounded-md overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Top-down perspective of modern tech gadgets, ceramic coffee mug, and wireframe sketchbook on neutral oak surface" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCoHMuJch9F2HRoBuF4owXQIeQ8pvuFVwQDcHSesk3COQY0SrEbRcHjffZrf8kySBAzNzOyjqVkFd5xuYL5kqyFNYEJQnP-TBG9koqkQULHPD30FjPP-XJIfkVezfnRNlHF9N3KEbz4498HoOyptBSuGEC3IZmflgjr47jUKZnEoGQOQBEYxexoMCFplQSpW8yEbERAWMUUH28yxdvEsEgkkS3MGi9qgm7STWOChg"/>
+</div>
+<div class="h-full rounded-md overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Close up of modern dark mode IDE code editor showing clean functions, minimal soft lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8L6DFT-1vkMxrHY-C_qGSoTh5YqhHd7l0s3njKZfAPKR5wlRuCoW82z4IdtHClTCfC_K6K3gzQYW136Q_mPVrlteZg5CISkMGA44tGOJrIEDvnnhWZzToAFuXtznw71at6v83T8TEc6N7MSrWZ2I6Df4QAUSNj7TUBF9pf_BEDwQD9y7_Yzd02NisBx7GKuFIX6AQ5DkqPpvNxZb9jMnf4Hx_Gyn-WIwDK0fTKgc"/>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-body-lg text-on-surface font-semibold tracking-tight">개발 &amp; 기술</span>
+<span class="font-caption text-caption px-2 py-0.5 rounded-full bg-surface-container-low text-primary font-medium border border-surface-variant/70">19개</span>
+</div>
+</article>
+<!-- Topic Card 4: 여행 & 장소 -->
+<article class="bg-surface-container-lowest border border-surface-variant rounded-xl p-3 shadow-sm flex flex-col justify-between hover:border-secondary-container hover:shadow-md transition-all group cursor-pointer">
+<div class="grid grid-cols-3 gap-1.5 h-20 mb-3 rounded-lg overflow-hidden">
+<div class="col-span-2 h-full rounded-md overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Peaceful secluded wooden tea house overlooking misty bamboo forest hills in Kyoto, warm atmospheric natural travel photography" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB826QBwu3hEZWZTZdDLWEo4k4pAmjoNVZqikoXjHuBI8oj8nRCgN9gI8U3zbAwdI7DSWKTiUzEM8nkGCSSUI82BlpP2Z-q4NMTD8oLXIX22iqN1GGHYk_ssB-vWFoOhBpsYyBb3FPV6s40aVNPl4tltbPgZBtaSf1-ozlLbvijIF_yRgzs4JC2s6V8e-Cd8SssaQmUSSesSZTXZHyCHD-8eCnaQAsjM5K9eJr9VGg"/>
+</div>
+<div class="flex flex-col gap-1.5 h-full">
+<div class="h-full rounded-md overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A quaint sunlit cobblestone lane in Southern Europe with ceramic planters and quiet cafe tables" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6LuC9umbO9lJ2V4Q2l-aJyL13tZ71EO8ZTGnY0vYaOSZdN73_CpbLQciGa1lCsRKB-ArQ8zocAmeRtZFQwsUHGWt6V59bMZaYt85pai0evo65zRDxHbiNut0B-y65ad7jSj05GOSgNTa0ymh1x0cv-lXpk5OUjnxDTef2toSgzkW3ul7J2_XovzKm4R-OmBS1PU6gc7GaVXx7DSpi_UwWvXcpasFr_7jrZYJcKsY"/>
+</div>
+<div class="h-full rounded-md overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Calm turquoise ocean inlet framed by coastal limestone rocks on a hazy clear afternoon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8xe7Zre-aK3DJp7HV5_QLMtzTR5Q4eGg1FPYw6ScqfoHvg1e1omJ94QNPfiborIlH_NhAuWLIfBngedF8uCTfBQQ7ILj7QFQ1gfnnx1Q-LhM04NoZMpFkT0iafVsMIBux9Z70mVSrdMWuRbMz5_5L82n9K6uHxMNNMHaFD2cMeOOrgC8Pvs98W6nYp6hnkK9c06vk3f3h0bjMKQHkgq522jS7v_yMW2ci9GdNFp4"/>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-body-lg text-on-surface font-semibold tracking-tight">여행 &amp; 장소</span>
+<span class="font-caption text-caption px-2 py-0.5 rounded-full bg-surface-container-low text-primary font-medium border border-surface-variant/70">27개</span>
+</div>
+</article>
+<!-- Topic Card 5: 인테리어 -->
+<article class="bg-surface-container-lowest border border-surface-variant rounded-xl p-3 shadow-sm flex flex-col justify-between hover:border-secondary-container hover:shadow-md transition-all group cursor-pointer">
+<div class="grid grid-cols-3 gap-1.5 h-20 mb-3 rounded-lg overflow-hidden">
+<div class="col-span-2 h-full rounded-md overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Minimalist architectural living room featuring textured limewash walls, mid-century lounge chair, and sculptural paper floor lantern with soft shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBqHpJyMN90d9XzgtOH3O6g2mPzHvx9wD832oKxcB1YvT_abg_CdeZ_rl-_as_r5h0LQ8Z4SHHQ-U5X0snm9vvovMPOh_44eHNZYdoBosfxnrHQceUEG_pZPWzMacnBj5w5l0pzBkvgdgxoGTe0DTBZNIxrRV85_5goNT12PWtSCnSItFxawX5h6yz_HGWI13FfyO176aWAmzExx3n2KUx-j09GT5l9x30U-mpvyrQ"/>
+</div>
+<div class="flex flex-col gap-1.5 h-full">
+<div class="h-full rounded-md overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Ceramic vases and dried botanical stems artfully arranged on a low walnut console table" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNuHZfJLpF1nJtXscDy0g1a_segcutrLo003KR76P6g54FdOtK2D8oHOfWP71h10mkypZvWHLtjFX5cIvJOECh2R9rZVcce1FPWrtLj3NMYIG7jJagGFohZbZ0ccS3ibzNWIL0oRDyCfA1S7wm15xOQrZ5xo5UJ3306Ei8AipJnPUcjXiyxjh5Cimki3-QKdTZt0B-4X6FLT1YBOvlPHrIZkH21aCJTOLnm6Ph4bI"/>
+</div>
+<div class="h-full rounded-md overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Sun-dappled reading nook with tailored linen cushions and a small built-in floating wooden bookshelf" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAN5qRJbXkM8CcgXdPXTu9ITFg97pJfaJHD4hf0xzEyCJsqHyvYPfNaiwMZ9NFU6OUYbOYg3QIq4M_5b9wxVD502tj8qRul8qrAU6iCDLJsc1a5Rg8tPUMQjcL3V8l65jUUdEj_29Q6F8kiQRphFelUg1LFMtPAI5SESx3R2JJFyS3MhwECwdl8skYaYtqRujTi39SXis8Sm_WebqvHDLjJk31qrxeBnfem1T9VGz8"/>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-body-lg text-on-surface font-semibold tracking-tight">인테리어</span>
+<span class="font-caption text-caption px-2 py-0.5 rounded-full bg-surface-container-low text-primary font-medium border border-surface-variant/70">15개</span>
+</div>
+</article>
+<!-- Topic Card 6: 자기계발 -->
+<article class="bg-surface-container-lowest border border-surface-variant rounded-xl p-3 shadow-sm flex flex-col justify-between hover:border-secondary-container hover:shadow-md transition-all group cursor-pointer">
+<div class="grid grid-cols-3 gap-1.5 h-20 mb-3 rounded-lg overflow-hidden">
+<div class="col-span-2 h-full rounded-md overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Aesthetic leather bound planner notebook with brass fountain pen, beige paper grain, and a gentle cup of black coffee on warm stone desk" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDqH41ra7Uu90OY-_6zBnY7zV0nWhH-9DwMU5xycfCMY4lOz85-y3TJ9SzwcgQB7rWpRVKUcv9j8WNc5UzQldGj7AJA5Wjh6-F2zBqpnnJxaUtklpNqjMwSYLTLQj7JNP2SF5exCPlh02zbndtDek36xyezmCiu4iGeb3RB-Tp1tsAORZcvPUmhPJB_zXkdheY6bUQ5i3LdAyPqXr88TxtDW2X2b5E5p8M0A63H7Hk"/>
+</div>
+<div class="flex flex-col gap-1.5 h-full">
+<div class="h-full rounded-md overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="An open hardcover philosophy book resting under warm diffused afternoon window light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkazEfirVoO88OBH2PphLxXe08oXvb6_ftKJDSqynNp4vXFStr6JxfK8BNujJotQuM912wyTq7RTta1eySQiIp4MD4wdd_onvMosCseGr0rghEId17ImQqJIgSPelIZ63oK1vEbO4DH8yAem2Q0B584hunyZjiIYCdwu3EBdqt0JurJ48Xi1oEMBmMz4WUjQBvQgXSTI1FDXoAK7s5yZESi3xUSsMkZS-fvDIkUB4"/>
+</div>
+<div class="h-full rounded-md overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Minimal analog timer clock resting peacefully beside high-grade stationary on a clean cedar tabletop" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXFCRvaWBpbMEo74qDAD4qftzUZ2Cvfw0qlgN04JqpXLvK5PZtyPzdsfmElhxJrrzAG4N6hz8Qfs9mVT3j8Ukcj0XYJRieBdCGvXqH0DC5sK8n6ZdVBO3dKioGGfeDH-4nbvwsQB_1BA93_JHhQLoHD38Ayy1z3mv-g9P4eKrJtZ4jCpRU92dSWqLJbZoWa-diGXg_a4CkmTwg_LmBcfmdrYt9DC7Fi2aq_JHYNHI"/>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-body-lg text-on-surface font-semibold tracking-tight">자기계발</span>
+<span class="font-caption text-caption px-2 py-0.5 rounded-full bg-surface-container-low text-primary font-medium border border-surface-variant/70">19개</span>
+</div>
+</article>
+</div>
+</section>
+<!-- Section 2: Recently Saved (최근 저장) -->
+<section class="flex flex-col">
+<div class="flex items-baseline justify-between mb-space-md">
+<div class="flex items-center gap-space-xs">
+<h2 class="font-headline-sm text-headline-sm text-on-surface tracking-tight">최근 저장</h2>
+<span class="font-label-sm text-label-sm text-primary font-medium">오늘 추가된 3개 포함</span>
+</div>
+<button class="font-label-md text-label-md text-on-surface-variant hover:text-on-surface flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[16px]">tune</span>
+        최신순
+      </button>
+</div>
+<!-- Vertical Video List -->
+<div class="flex flex-col gap-space-md w-full">
+<!-- Item 1: 브라운 버터 파스타 -->
+<article class="bg-surface-container-lowest border border-surface-variant rounded-xl p-3.5 shadow-sm flex gap-3.5 items-start transition-all hover:border-secondary-container hover:shadow-md">
+<!-- 9:16 Vertical Thumbnail -->
+<div class="w-[74px] h-[112px] shrink-0 rounded-lg overflow-hidden relative shadow-sm bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Vertical 9:16 format still of golden foaming brown butter tossed with spaghetti noodles in stainless pan, bright kitchen lighting with high speed culinary steam capture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFtZU4A9ovwiiHPPYcvxpEc_C7sJ4QAl3_BO1HoUBeXpW7JUqII2PbYvr-a9euAEW3ZTU3eAenORtFFHlUMMrs7Mh4PbEnCOpxI7urwuPi9UJxedvUU89qVc-ETnAaetOADprIJvEQw6iSIYe0UYdh8mwdNArOo5igctrb47DBwipXD_YXYKZlB1fA_SSgBmPWsV-71YavEhOpmGxa_FL41HfaawPuUe8NFfhdbho"/>
+<!-- Platform Icon Badge (Instagram) -->
+<div class="absolute top-1.5 left-1.5 w-5 h-5 rounded-md bg-surface/90 backdrop-blur-sm flex items-center justify-center shadow-xs">
+<svg class="w-3 h-3 text-primary" fill="currentColor" viewbox="0 0 24 24">
+<path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path>
+</svg>
+</div>
+<!-- Duration pill -->
+<div class="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-inverse-surface/80 text-inverse-on-surface font-caption text-[10px] leading-none">
+            0:48
+          </div>
+</div>
+<!-- Content Details -->
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between mb-1">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-low border border-surface-variant/60 text-primary font-caption text-caption font-medium">요리</span>
+<span class="font-caption text-caption text-outline">방금 전</span>
+</div>
+<h3 class="font-headline-sm text-body-md text-on-surface font-semibold tracking-tight truncate leading-snug">
+            초간단 10분 원팬 브라운 버터 파스타 레시피
+          </h3>
+<!-- AI Summary Capsule -->
+<div class="mt-1.5 p-2 rounded-lg bg-surface-container-low border border-surface-variant/40 flex items-start gap-1.5">
+<span class="material-symbols-outlined text-primary text-[15px] shrink-0 mt-0.5" style="font-variation-settings: 'FILL' 1;">arrow_back_ios_new</span>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed line-clamp-2">
+<strong class="font-medium text-on-surface">AI 요약:</strong> 버터를 갈색이 될 때까지 태워 헤이즐넛 풍미를 극대화하고 면수를 3국자 넣어 유화시키는 것이 핵심입니다.
+            </p>
+</div>
+<!-- Watch External Link -->
+<div class="mt-2 flex items-center justify-between pt-1">
+<span class="font-caption text-caption text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">bookmark</span>
+              저장됨
+            </span>
+<a class="min-h-[32px] inline-flex items-center gap-1 text-primary hover:text-on-primary-fixed-variant font-label-sm text-label-sm font-semibold transition-colors" href="https://instagram.com" rel="noopener noreferrer" target="_blank">
+              원문 보기
+              <span class="material-symbols-outlined text-[14px]">open_in_new</span>
+</a>
+</div>
+</div>
+</article>
+<!-- Item 2: 스트레칭 루틴 -->
+<article class="bg-surface-container-lowest border border-surface-variant rounded-xl p-3.5 shadow-sm flex gap-3.5 items-start transition-all hover:border-secondary-container hover:shadow-md">
+<!-- 9:16 Vertical Thumbnail -->
+<div class="w-[74px] h-[112px] shrink-0 rounded-lg overflow-hidden relative shadow-sm bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Vertical 9:16 still of physical therapist performing seated lumbar spine decompression stretch against light oak floor, clean warm studio atmosphere" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9UDkVbqQOlbjBiCYcNxWjz7XRyjcPd9psi_N6vnomBA9PdPf1XO-8-wwMojPhJWj4BDvytLTojrh_8C12zg6mFfrdl9TwI8oj2daNwVy_FeVE-L91VxLdQcUz0TEyNzuI_Yp0tOpWqiltSZOmb6suqDs8Zv1h4h8c7zUnT3ckz0__XloDysrN1M_BO8Pf0jNQW5gIxZSeSZXlKMG5fULQWWR1SWIBoW6G22dnLnE"/>
+<!-- Platform Icon Badge (YouTube Shorts) -->
+<div class="absolute top-1.5 left-1.5 w-5 h-5 rounded-md bg-surface/90 backdrop-blur-sm flex items-center justify-center shadow-xs">
+<svg class="w-3 h-3 text-error" fill="currentColor" viewbox="0 0 24 24">
+<path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"></path>
+</svg>
+</div>
+<!-- Duration pill -->
+<div class="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-inverse-surface/80 text-inverse-on-surface font-caption text-[10px] leading-none">
+            0:59
+          </div>
+</div>
+<!-- Content Details -->
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between mb-1">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-low border border-surface-variant/60 text-primary font-caption text-caption font-medium">운동 &amp; 홈트</span>
+<span class="font-caption text-caption text-outline">어제</span>
+</div>
+<h3 class="font-headline-sm text-body-md text-on-surface font-semibold tracking-tight truncate leading-snug">
+            허리 통증 줄이는 5가지 척추 스트레칭 루틴
+          </h3>
+<!-- AI Summary Capsule -->
+<div class="mt-1.5 p-2 rounded-lg bg-surface-container-low border border-surface-variant/40 flex items-start gap-1.5">
+<span class="material-symbols-outlined text-primary text-[15px] shrink-0 mt-0.5" style="font-variation-settings: 'FILL' 1;">arrow_back_ios_new</span>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed line-clamp-2">
+<strong class="font-medium text-on-surface">AI 요약:</strong> 아침 기상 직후 침대에서 진행 가능한 장요근 및 이상근 이완 중심 3단계와 골반 정렬 동작.
+            </p>
+</div>
+<!-- Watch External Link -->
+<div class="mt-2 flex items-center justify-between pt-1">
+<span class="font-caption text-caption text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">label</span>
+              척추건강
+            </span>
+<a class="min-h-[32px] inline-flex items-center gap-1 text-primary hover:text-on-primary-fixed-variant font-label-sm text-label-sm font-semibold transition-colors" href="https://youtube.com" rel="noopener noreferrer" target="_blank">
+              원문 보기
+              <span class="material-symbols-outlined text-[14px]">open_in_new</span>
+</a>
+</div>
+</div>
+</article>
+<!-- Item 3: GitHub Copilot 단축키 -->
+<article class="bg-surface-container-lowest border border-surface-variant rounded-xl p-3.5 shadow-sm flex gap-3.5 items-start transition-all hover:border-secondary-container hover:shadow-md">
+<!-- 9:16 Vertical Thumbnail -->
+<div class="w-[74px] h-[112px] shrink-0 rounded-lg overflow-hidden relative shadow-sm bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Vertical 9:16 format capture of programmer hands typing rapid shortcuts on keyboard with colorful split code screen overlay, futuristic yet warm mood" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCrzBZGdaJrVpXvr6FFI0qL32lSuLVB8gjAEOYsYH4hEZDVlH5xgMxuLsCPml5pFjj_UbWs4rX0SUaaW2ZARri11Hbs14RwPVbUKSm468C7FYG8X5VWALemZSwbrM6cdgVnrk870zEaxtay9jzN3x6H0bAHjw81LRWmZVmEGKH59nQCVZDZgAXBOFWbpowATsETxHgvGpoQ8VhwcBdgwL4IRBZxOnjWJ0wL6wW4Ops"/>
+<!-- Platform Icon Badge (Instagram) -->
+<div class="absolute top-1.5 left-1.5 w-5 h-5 rounded-md bg-surface/90 backdrop-blur-sm flex items-center justify-center shadow-xs">
+<svg class="w-3 h-3 text-primary" fill="currentColor" viewbox="0 0 24 24">
+<path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path>
+</svg>
+</div>
+<!-- Duration pill -->
+<div class="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-inverse-surface/80 text-inverse-on-surface font-caption text-[10px] leading-none">
+            0:35
+          </div>
+</div>
+<!-- Content Details -->
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between mb-1">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-low border border-surface-variant/60 text-primary font-caption text-caption font-medium">개발 &amp; 기술</span>
+<span class="font-caption text-caption text-outline">3일 전</span>
+</div>
+<h3 class="font-headline-sm text-body-md text-on-surface font-semibold tracking-tight truncate leading-snug">
+            GitHub Copilot 실무 단축키 및 팁 7가지
+          </h3>
+<!-- AI Summary Capsule -->
+<div class="mt-1.5 p-2 rounded-lg bg-surface-container-low border border-surface-variant/40 flex items-start gap-1.5">
+<span class="material-symbols-outlined text-primary text-[15px] shrink-0 mt-0.5" style="font-variation-settings: 'FILL' 1;">arrow_back_ios_new</span>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed line-clamp-2">
+<strong class="font-medium text-on-surface">AI 요약:</strong> 인라인 제안 토글 <kbd class="px-1 py-0.5 rounded bg-surface-container-highest font-mono text-[10px] text-primary">Alt+]</kbd> 과 인라인 채팅 창 즉시 호출 커맨드셋 요약.
+            </p>
+</div>
+<!-- Watch External Link -->
+<div class="mt-2 flex items-center justify-between pt-1">
+<span class="font-caption text-caption text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">lightbulb</span>
+              VS Code
+            </span>
+<a class="min-h-[32px] inline-flex items-center gap-1 text-primary hover:text-on-primary-fixed-variant font-label-sm text-label-sm font-semibold transition-colors" href="https://instagram.com" rel="noopener noreferrer" target="_blank">
+              원문 보기
+              <span class="material-symbols-outlined text-[14px]">open_in_new</span>
+</a>
+</div>
+</div>
+</article>
+</div>
+</section>
+<!-- Quiet End State Note -->
+<div class="w-full my-space-lg py-4 flex flex-col items-center justify-center text-center">
+<div class="w-8 h-8 rounded-full bg-surface-container-low border border-surface-variant flex items-center justify-center mb-1.5">
+<span class="material-symbols-outlined text-primary text-[18px]">verified</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant">
+      모든 링크는 원래 앱(인스타그램, 유튜브)으로 바로 연결됩니다.<br/>
+      Reelbox는 온전한 집중을 위해 인앱 재생을 지원하지 않습니다.
+    </p>
+</div>
+</div>
+<script>
+  // Simple micro-interaction for smooth search field UX and quick feedback
+  document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.querySelector('input[type="search"]');
+    if (searchInput) {
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          searchInput.blur();
+        }
+      });
+    }
+  });
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/85 backdrop-blur-xl border-t border-surface-variant/40" data-active-classes="text-primary font-semibold"><div class="h-16 max-w-[640px] mx-auto flex items-stretch justify-around px-space-xs"><a aria-current="page" class="flex-1 flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-0.5 transition-colors text-primary font-semibold" data-path="home" href="#"><span class="material-symbols-outlined text-[24px]">home</span><span class="font-label-sm text-label-sm">홈</span></a><a class="flex-1 flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-0.5 text-on-surface-variant transition-colors hover:text-primary" data-path="search" href="#"><span class="material-symbols-outlined text-[24px]">search</span><span class="font-label-sm text-label-sm">검색</span></a><a class="flex-1 flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-0.5 text-on-surface-variant transition-colors hover:text-primary" data-path="add" href="#"><span class="material-symbols-outlined text-[24px]">add_circle</span><span class="font-label-sm text-label-sm">추가</span></a><a class="flex-1 flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-0.5 text-on-surface-variant transition-colors hover:text-primary" data-path="settings" href="#"><span class="material-symbols-outlined text-[24px]">settings</span><span class="font-label-sm text-label-sm">설정</span></a></div></nav></body></html>

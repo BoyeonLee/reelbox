@@ -201,6 +201,17 @@ Go가 더 익숙하더라도, 이 프로젝트는 AI·영상 도구 때문에 Py
 - **숨기기·삭제:** 영상 상세의 ⋯ 메뉴, 또는 목록에서 카드를 길게 눌러 여러 개를 골라 한꺼번에. 실행 직후 5초간 "되돌리기" 알림을 띄우고, 휴지통 비우기만 확인 창을 한 번 띄운다. API: `PATCH /api/items/{id}`(숨김 켜기·끄기), `DELETE /api/items/{id}`(휴지통으로), `POST /api/items/{id}/restore`, `POST /api/items/bulk`(여러 개 한꺼번에).
 - **접근 제한:** Tailscale 밖에서는 접근 불가. 추가로 긴 비밀 토큰(`REELBOX_TOKEN`)을 쿠키나 헤더로 확인한다(단축어는 헤더로 보냄).
 
+### Phase 5 결정
+
+- **화면 디자인:** Stitch로 만든 화면(`docs/design/stitch/`, Mist Lavender 테마)을 따른다. Stitch 화면 중 다른 Phase 기능(오프라인 홈 → 8, 즐겨찾기·메모·주제 바꾸기·실패 재시도 → 7)과 범위 밖 요소(조회수, TikTok, 태그 추가, 브라우저 확장, 클라우드 백업)는 넣지 않았다.
+- **토큰 입력 화면:** 아이폰에서 홈 화면에 추가한 웹앱은 Safari와 쿠키를 따로 쓴다. 그래서 처음 열 때 토큰을 한 번 붙여넣으면 `POST /api/login`이 HttpOnly 쿠키(1년)를 심는다. 헤더는 `Authorization: Bearer <토큰>`. `REELBOX_TOKEN`이 비어 있으면 서버가 시작하지 않는다.
+- **공개 범위:** 화면 껍데기(HTML·JS·manifest·서비스 워커·아이콘)는 토큰 없이 받는다(데이터가 없고, 로그인 전에도 떠야 함). `/api/*`와 `/thumbs/*`는 토큰이 필요하다.
+- **추가 화면:** `POST /api/items`는 Phase 5에서 만들었다(링크를 `imported`로 넣기, 휴지통 항목이면 복원, 영구 삭제 항목은 건너뜀). 자동 처리 워커와 `GET /share`는 Phase 6.
+- **가져오기와 휴지통:** 휴지통에 있는(아직 purge 전) 영상도 가져오기에서는 "이미 삭제한 영상"으로 건너뛴다. 공유·추가 화면으로 다시 넣을 때만 복원한다.
+- **목록 범위:** 홈 최근 저장·주제 상세는 분석이 끝난(`analyzed`/`indexed`) 항목만 보여준다. 검색은 지금처럼 `indexed`만.
+- **의미 검색 모델:** 서버가 켜질 때 bge-m3를 백그라운드에서 불러온다. 다 불러오기 전(약 30초)에는 키워드 검색만 하고, 화면에 "의미 검색 준비 중"을 표시한다.
+- **API 목록:** `GET /api/home`, `/api/topics/{id}`, `/api/items?topic_id&sort&limit&offset`, `/api/items/{id}`, `/api/search?q&platform&topic&since&until&limit&offset`, `/api/status`, `/api/hidden`, `/api/trash`, `/api/adds`, `PATCH`·`DELETE /api/items/{id}`, `POST /api/items/{id}/restore`, `/api/items/bulk`(`hide`/`unhide`/`delete`/`restore`), `/api/trash/empty`, `/api/items`, `/api/login`, `/api/logout`.
+
 ### 보기 전용 사이트 (PC가 꺼져 있을 때)
 
 PC가 켜질 때마다 결과를 **스냅샷**(JSON 파일 + 썸네일)으로 묶어 Cloudflare Pages에 올린다. 휴대폰 앱은 하나다. 먼저 PC에 연결을 시도하고, 2초 안에 답이 없으면 스냅샷을 연다. 비유하면 주방(PC)이 닫혀 있을 때 문 앞에 붙여둔 메뉴판을 보는 것이다.
@@ -246,8 +257,9 @@ reelbox/
 │  ├─ ai/                  # llm.py(인터페이스), analyze.py, organize.py
 │  ├─ search/              # embed.py, index.py, query.py
 │  ├─ publish.py           # 스냅샷 만들기·Cloudflare Pages 배포
+│  ├─ purge.py             # 휴지통 30일 지난 항목 영구 정리
 │  ├─ worker.py            # 공유로 들어온 항목 자동 처리
-│  └─ web/                 # app.py(JSON API), routes/, static/(index.html, app.js, data.js, sw.js, manifest)
+│  └─ web/                 # app.py(앱·썸네일), auth.py(토큰), routes/api.py(JSON API), static/(index.html, app.js, data.js, sw.js, manifest.json, icons/)
 ├─ tests/                  # fixtures/(가짜 내보내기 파일), test_*.py
 └─ data/                   # reelbox.db, tmp/, thumbs/, dist/ (git 제외)
 ```

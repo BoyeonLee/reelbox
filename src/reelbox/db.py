@@ -49,9 +49,13 @@ class FailedItem(BaseModel):
     updated_at: str
 
 
-def connect(db_path: Path) -> sqlite3.Connection:
-    """sqlite-vec 을 불러온 연결을 연다. 확장을 못 불러오면 예외를 그대로 올린다."""
-    conn = sqlite3.connect(db_path)
+def connect(db_path: Path, *, check_same_thread: bool = True) -> sqlite3.Connection:
+    """sqlite-vec 을 불러온 연결을 연다. 확장을 못 불러오면 예외를 그대로 올린다.
+
+    check_same_thread=False 는 웹 서버용: 한 요청이 연결을 순서대로만 쓰지만, FastAPI 가
+    열기와 닫기를 서로 다른 스레드에서 할 수 있다.
+    """
+    conn = sqlite3.connect(db_path, check_same_thread=check_same_thread)
     conn.row_factory = sqlite3.Row
     conn.enable_load_extension(True)
     sqlite_vec.load(conn)
@@ -191,10 +195,16 @@ def add_item(
         return AddOutcome.ADDED
 
     row = conn.execute(
-        "SELECT id, status FROM items WHERE platform = ? AND source_id = ?",
+        """
+        SELECT i.id, i.status, um.deleted_at
+        FROM items AS i LEFT JOIN user_meta AS um ON um.item_id = i.id
+        WHERE i.platform = ? AND i.source_id = ?
+        """,
         (parsed.platform, parsed.source_id),
     ).fetchone()
-    if row["status"] == "deleted":
+    # 휴지통에 있는 것(deleted_at)도 영구 삭제한 것과 같이 건너뛴다.
+    # 공유로 다시 들어온 경우의 복원은 웹 API 가 따로 처리한다 (DESIGN.md 4장).
+    if row["status"] == "deleted" or row["deleted_at"] is not None:
         return AddOutcome.DELETED
     # 채울 게 있을 때만 UPDATE 한다 (안 그러면 트리거가 updated_at 을 매번 바꾼다)
     conn.execute(
@@ -725,3 +735,328 @@ def assign_topics(conn: sqlite3.Connection, assignments: dict[int, int]) -> None
                 " VALUES (?, ?, 1)",
                 (item_id, topic_id),
             )
+
+
+# --- 웹 화면: 목록·상세 ---
+
+# 목록에 보여줄 상태. 분석 전 항목은 제목·요약이 없어서 목록에는 넣지 않는다.
+LISTABLE_STATUSES = ("analyzed", "indexed")
+
+# 저장 시각이 없으면(유튜브 목록 등) 처음 가져온 시각으로 정렬한다
+_SORT_KEY = "COALESCE(i.saved_at, i.created_at)"
+
+_CARD_COLUMNS = """
+    i.id, i.platform, i.url, i.title, i.author, i.saved_at, i.created_at,
+    i.duration_sec, i.thumbnail_path, i.media_type, i.status, i.error,
+    a.summary_ko, tp.id AS topic_id, tp.name AS topic, um.hidden_at, um.deleted_at
+"""
+_CARD_FROM = """
+    FROM items AS i
+    LEFT JOIN analyses AS a ON a.item_id = i.id
+    LEFT JOIN item_topics AS it ON it.item_id = i.id AND it.is_primary = 1
+    LEFT JOIN topics AS tp ON tp.id = it.topic_id
+    LEFT JOIN user_meta AS um ON um.item_id = i.id
+"""
+_CARD_SQL = f"SELECT {_CARD_COLUMNS} {_CARD_FROM}"
+
+
+class ItemCard(BaseModel):
+    """목록 카드 한 장에 필요한 값."""
+
+    id: int
+    platform: Platform
+    url: str
+    title: str | None
+    author: str | None
+    summary_ko: str | None
+    topic_id: int | None
+    topic: str | None
+    saved_at: str | None
+    created_at: str
+    duration_sec: float | None
+    thumbnail_path: str | None
+    media_type: MediaType | None
+    status: str
+    error: str | None
+    hidden_at: str | None
+    deleted_at: str | None
+
+
+class ItemDetail(ItemCard):
+    description: str | None
+    key_points: list[str]
+    tags: list[str]
+    transcript_source: str | None
+    transcript_text: str | None
+    similar: list[ItemCard]
+
+
+def _listable_where() -> str:
+    statuses = ", ".join(f"'{s}'" for s in LISTABLE_STATUSES)
+    return f"i.status IN ({statuses}) AND {VISIBLE_SQL}"
+
+
+def list_items(
+    conn: sqlite3.Connection,
+    *,
+    topic_id: int | None = None,
+    oldest_first: bool = False,
+    limit: int = 30,
+    offset: int = 0,
+) -> list[ItemCard]:
+    """홈 최근 저장·주제 상세 목록. 숨김·삭제 항목은 뺀다."""
+    where = _listable_where()
+    params: dict[str, object] = {"limit": limit, "offset": offset}
+    if topic_id is not None:
+        where += " AND tp.id = :topic_id"
+        params["topic_id"] = topic_id
+    order = "ASC" if oldest_first else "DESC"
+    rows = conn.execute(
+        _CARD_SQL
+        + f"WHERE {where} ORDER BY {_SORT_KEY} {order}, i.id {order} LIMIT :limit OFFSET :offset",
+        params,
+    )
+    return [ItemCard(**dict(r)) for r in rows]
+
+
+def count_listable(conn: sqlite3.Connection) -> int:
+    return conn.execute(f"SELECT COUNT(*) FROM items AS i WHERE {_listable_where()}").fetchone()[0]
+
+
+def cards_by_ids(conn: sqlite3.Connection, ids: list[int]) -> list[ItemCard]:
+    """id 순서를 지켜서 카드를 돌려준다 (검색 결과·비슷한 영상). 없는 id 는 빠진다."""
+    if not ids:
+        return []
+    marks = ", ".join("?" for _ in ids)
+    rows = conn.execute(_CARD_SQL + f"WHERE i.id IN ({marks})", ids)
+    by_id = {r["id"]: ItemCard(**dict(r)) for r in rows}
+    return [by_id[i] for i in ids if i in by_id]
+
+
+def get_item_detail(conn: sqlite3.Connection, item_id: int) -> ItemDetail | None:
+    """상세 화면. 숨김·휴지통 항목도 보여준다 (되돌리기용). 영구 삭제된 항목은 None."""
+    row = conn.execute(
+        f"""
+        SELECT {_CARD_COLUMNS}, i.description, a.key_points, a.tags,
+               tr.source AS transcript_source, tr.text AS transcript_text
+        {_CARD_FROM}
+        LEFT JOIN transcripts AS tr ON tr.item_id = i.id
+        WHERE i.id = ? AND i.status != 'deleted'
+        """,
+        (item_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    data = dict(row)
+    similar = [
+        c
+        for c in cards_by_ids(conn, similar_ids(conn, item_id))
+        if c.hidden_at is None and c.deleted_at is None and c.status in LISTABLE_STATUSES
+    ]
+    return ItemDetail(
+        **{
+            **data,
+            "key_points": json.loads(data["key_points"] or "[]"),
+            "tags": json.loads(data["tags"] or "[]"),
+            "similar": similar,
+        }
+    )
+
+
+class TopicCard(BaseModel):
+    id: int
+    name: str
+    description: str | None
+    items: int
+    thumbnail_paths: list[str]
+
+
+def topic_cards(conn: sqlite3.Connection, thumbs: int = 3) -> list[TopicCard]:
+    """홈의 주제 카드: 개수와 최근 저장 순 대표 썸네일. 보여줄 항목이 0개인 주제는 뺀다."""
+    cards: list[TopicCard] = []
+    for t in topic_counts(conn):
+        if t.items == 0:
+            continue
+        rows = conn.execute(
+            f"""
+            SELECT i.thumbnail_path
+            FROM item_topics AS it JOIN items AS i ON i.id = it.item_id
+            WHERE it.topic_id = ? AND it.is_primary = 1 AND i.thumbnail_path IS NOT NULL
+              AND {VISIBLE_SQL}
+            ORDER BY {_SORT_KEY} DESC, i.id DESC
+            LIMIT ?
+            """,
+            (t.id, thumbs),
+        )
+        cards.append(
+            TopicCard(
+                id=t.id,
+                name=t.name,
+                description=t.description,
+                items=t.items,
+                thumbnail_paths=[r["thumbnail_path"] for r in rows],
+            )
+        )
+    return cards
+
+
+def get_topic(conn: sqlite3.Connection, topic_id: int) -> TopicCount | None:
+    for t in topic_counts(conn):
+        if t.id == topic_id:
+            return t
+    return None
+
+
+def list_hidden(conn: sqlite3.Connection) -> list[ItemCard]:
+    """숨긴 항목 (휴지통에 있는 것은 뺀다). 최근에 숨긴 순."""
+    rows = conn.execute(
+        _CARD_SQL + "WHERE um.hidden_at IS NOT NULL AND um.deleted_at IS NULL"
+        " AND i.status != 'deleted' ORDER BY um.hidden_at DESC, i.id DESC"
+    )
+    return [ItemCard(**dict(r)) for r in rows]
+
+
+def list_trash(conn: sqlite3.Connection) -> list[ItemCard]:
+    """휴지통 항목. 최근에 버린 순."""
+    rows = conn.execute(
+        _CARD_SQL + "WHERE um.deleted_at IS NOT NULL AND i.status != 'deleted'"
+        " ORDER BY um.deleted_at DESC, i.id DESC"
+    )
+    return [ItemCard(**dict(r)) for r in rows]
+
+
+def recent_adds(conn: sqlite3.Connection, source: str, limit: int = 20) -> list[ItemCard]:
+    """추가 화면에서 처리 상태를 보여줄, 최근에 source 로 들어온 항목."""
+    rows = conn.execute(
+        _CARD_SQL + "WHERE i.imported_from = ? AND i.status != 'deleted'"
+        " ORDER BY i.created_at DESC, i.id DESC LIMIT ?",
+        (source, limit),
+    )
+    return [ItemCard(**dict(r)) for r in rows]
+
+
+def find_item_id(conn: sqlite3.Connection, platform: str, source_id: str) -> int | None:
+    row = conn.execute(
+        "SELECT id FROM items WHERE platform = ? AND source_id = ?", (platform, source_id)
+    ).fetchone()
+    return None if row is None else row["id"]
+
+
+def is_trashed(conn: sqlite3.Connection, item_id: int) -> bool:
+    """휴지통에 있는지 (영구 삭제 전)."""
+    row = conn.execute(
+        """
+        SELECT 1 FROM items AS i JOIN user_meta AS um ON um.item_id = i.id
+        WHERE i.id = ? AND um.deleted_at IS NOT NULL AND i.status != 'deleted'
+        """,
+        (item_id,),
+    ).fetchone()
+    return row is not None
+
+
+# --- 숨기기·삭제(휴지통)·복원 (DESIGN.md 4장 "숨기기와 삭제") ---
+
+
+def _existing_ids(conn: sqlite3.Connection, ids: Sequence[int]) -> list[int]:
+    """영구 삭제되지 않은, 실제로 있는 항목 id 만 (순서·중복 정리)."""
+    unique = list(dict.fromkeys(ids))
+    if not unique:
+        return []
+    marks = ", ".join("?" for _ in unique)
+    rows = conn.execute(
+        f"SELECT id FROM items WHERE id IN ({marks}) AND status != 'deleted'", unique
+    )
+    found = {r["id"] for r in rows}
+    return [i for i in unique if i in found]
+
+
+def _set_meta_time(
+    conn: sqlite3.Connection, ids: Sequence[int], column: str, value: str | None
+) -> list[int]:
+    """user_meta 의 hidden_at 또는 deleted_at 을 바꾼다. 바꾼 항목 id 를 돌려준다."""
+    assert column in ("hidden_at", "deleted_at")
+    targets = _existing_ids(conn, ids)
+    with conn:
+        for item_id in targets:
+            conn.execute(
+                f"""
+                INSERT INTO user_meta (item_id, {column}) VALUES (?, ?)
+                ON CONFLICT (item_id) DO UPDATE SET {column} = excluded.{column}
+                """,
+                (item_id, value),
+            )
+    return targets
+
+
+def set_hidden(
+    conn: sqlite3.Connection, ids: Sequence[int], hidden: bool, *, now: datetime
+) -> list[int]:
+    return _set_meta_time(conn, ids, "hidden_at", to_iso(now) if hidden else None)
+
+
+def trash_items(conn: sqlite3.Connection, ids: Sequence[int], *, now: datetime) -> list[int]:
+    """휴지통으로. 30일 안에는 restore_items 로 되돌릴 수 있다."""
+    return _set_meta_time(conn, ids, "deleted_at", to_iso(now))
+
+
+def restore_items(conn: sqlite3.Connection, ids: Sequence[int]) -> list[int]:
+    """휴지통에서 꺼낸다. 숨김 표시는 그대로 둔다."""
+    return _set_meta_time(conn, ids, "deleted_at", None)
+
+
+class PurgedItem(BaseModel):
+    id: int
+    thumbnail_path: str | None
+
+
+def purge_trash(conn: sqlite3.Connection, *, deleted_before: datetime | None) -> list[PurgedItem]:
+    """휴지통 항목을 영구 정리한다. deleted_before 가 None 이면 휴지통 전부(비우기).
+
+    자막·분석·임베딩·검색 색인·주제 연결·비슷한 영상·user_meta 를 지우고, items 행은
+    status = 'deleted' 로 남긴다 (다시 가져올 때 건너뛰려고). 썸네일 파일은 부르는 쪽이 지운다.
+    """
+    rows = conn.execute(
+        """
+        SELECT i.id, i.thumbnail_path
+        FROM items AS i JOIN user_meta AS um ON um.item_id = i.id
+        WHERE um.deleted_at IS NOT NULL AND i.status != 'deleted'
+          AND (:before IS NULL OR um.deleted_at < :before)
+        ORDER BY i.id
+        """,
+        {"before": to_iso(deleted_before) if deleted_before else None},
+    ).fetchall()
+    purged = [PurgedItem(**dict(r)) for r in rows]
+    with conn:
+        for p in purged:
+            for sql in (
+                "DELETE FROM transcripts WHERE item_id = ?",
+                "DELETE FROM analyses WHERE item_id = ?",
+                "DELETE FROM embeddings WHERE item_id = ?",
+                "DELETE FROM items_fts WHERE rowid = ?",
+                "DELETE FROM item_topics WHERE item_id = ?",
+                "DELETE FROM user_meta WHERE item_id = ?",
+            ):
+                conn.execute(sql, (p.id,))
+            conn.execute(
+                "DELETE FROM item_similar WHERE item_id = ? OR similar_id = ?", (p.id, p.id)
+            )
+            conn.execute(
+                "UPDATE items SET status = 'deleted', thumbnail_path = NULL, error = NULL"
+                " WHERE id = ?",
+                (p.id,),
+            )
+    return purged
+
+
+def meta_counts(conn: sqlite3.Connection) -> dict[str, int]:
+    """설정 화면용: 숨긴 항목 수, 휴지통 항목 수."""
+    row = conn.execute(
+        """
+        SELECT
+          COALESCE(SUM(um.hidden_at IS NOT NULL AND um.deleted_at IS NULL), 0) AS hidden,
+          COALESCE(SUM(um.deleted_at IS NOT NULL), 0) AS trash
+        FROM user_meta AS um JOIN items AS i ON i.id = um.item_id
+        WHERE i.status != 'deleted'
+        """
+    ).fetchone()
+    return {"hidden": row["hidden"], "trash": row["trash"]}

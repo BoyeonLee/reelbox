@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><title>Reelbox</title><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "secondary-container": "#c8b6ff",
+          "surface": "#fdf8ff",
+          "on-secondary": "#ffffff",
+          "inverse-surface": "#312e43",
+          "secondary-fixed-dim": "#cebdff",
+          "secondary": "#645495",
+          "surface-container-low": "#f7f1ff",
+          "error": "#ba1a1a",
+          "on-error": "#ffffff",
+          "primary-fixed-dim": "#c9bfff",
+          "background": "#fdf8ff",
+          "surface-container-high": "#ebe5ff",
+          "inverse-on-surface": "#f4eeff",
+          "on-tertiary": "#ffffff",
+          "surface-variant": "#e5dffa",
+          "surface-tint": "#5e43d8",
+          "on-primary-fixed-variant": "#4523bf",
+          "on-primary-container": "#ffffff",
+          "surface-container": "#f1ebff",
+          "on-surface-variant": "#484554",
+          "surface-dim": "#ddd6f2",
+          "primary-fixed": "#e5deff",
+          "surface-bright": "#fdf8ff",
+          "primary-container": "#5e43d8",
+          "surface-container-lowest": "#ffffff",
+          "on-primary-fixed": "#1a0063",
+          "on-primary": "#ffffff",
+          "inverse-primary": "#c9bfff",
+          "on-secondary-fixed": "#200d4e",
+          "on-secondary-container": "#544484",
+          "secondary-fixed": "#e8ddff",
+          "tertiary-fixed": "#e5deff",
+          "outline-variant": "#e5defa",
+          "tertiary-fixed-dim": "#c9bfff",
+          "on-tertiary-fixed": "#1a0063",
+          "on-error-container": "#93000a",
+          "on-tertiary-container": "#dcd4ff",
+          "outline": "#797586",
+          "primary": "#5e43d8",
+          "on-background": "#221f33",
+          "tertiary": "#451dc8",
+          "on-surface": "#221f33",
+          "on-tertiary-fixed-variant": "#441cc8",
+          "tertiary-container": "#5e40e0",
+          "on-secondary-fixed-variant": "#4c3c7c",
+          "error-container": "#ffdad6",
+          "surface-container-highest": "#e5dffa"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.25rem",
+          "lg": "0.5rem",
+          "xl": "0.75rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "gutter": "1rem",
+          "space-xl": "2rem",
+          "space-xs": "0.25rem",
+          "space-md": "1rem",
+          "margin": "1rem",
+          "space-lg": "1.5rem",
+          "space-sm": "0.5rem"
+        },
+        "fontFamily": {
+          "body-sm": ["\"Plus Jakarta Sans\"", "sans-serif"],
+          "body-md": ["\"Plus Jakarta Sans\"", "sans-serif"],
+          "display-lg": ["\"Plus Jakarta Sans\"", "sans-serif"],
+          "body-lg": ["\"Plus Jakarta Sans\"", "sans-serif"],
+          "label-sm": ["\"Plus Jakarta Sans\"", "sans-serif"],
+          "label-lg": ["\"Plus Jakarta Sans\"", "sans-serif"],
+          "headline-sm": ["\"Plus Jakarta Sans\"", "sans-serif"],
+          "headline-lg": ["\"Plus Jakarta Sans\"", "sans-serif"],
+          "headline-md": ["\"Plus Jakarta Sans\"", "sans-serif"],
+          "label-md": ["\"Plus Jakarta Sans\"", "sans-serif"],
+          "caption": ["\"Plus Jakarta Sans\"", "sans-serif"]
+        },
+        "fontSize": {
+          "caption": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "400" }],
+          "body-sm": ["13px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+          "body-md": ["14px", { "lineHeight": "22px", "letterSpacing": "0.005em", "fontWeight": "400" }],
+          "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+          "body-lg": ["16px", { "lineHeight": "26px", "letterSpacing": "0em", "fontWeight": "400" }],
+          "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.03em", "fontWeight": "500" }],
+          "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+          "headline-sm": ["18px", { "lineHeight": "26px", "letterSpacing": "-0.005em", "fontWeight": "600" }],
+          "headline-lg": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+          "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+          "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }]
+        }
+      }
+    }
+  };
+</script><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;font-family:"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head><body class="bg-surface font-body-md text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl border-b border-outline-variant/40"><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm"><span class="material-symbols-outlined text-on-primary text-[20px]">auto_stories</span></div><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight">Reelbox</span></div><div class="flex items-center gap-space-sm"><div class="h-6 px-space-sm rounded-full bg-surface-container-lowest border border-outline-variant/60 flex items-center gap-1.5 shadow-[0_1px_4px_rgba(0,0,0,0.04)]"><span class="w-2 h-2 rounded-full bg-[#5e43d8] animate-pulse"></span><span class="font-caption text-caption text-on-surface-variant font-medium">PC 연결됨</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full pt-16 pb-24 bg-surface max-w-[640px] mx-auto min-h-screen px-margin"><div class="flex flex-col w-full relative">
+<!-- Underlying Screen Context: Search view for "파스타" -->
+<div class="flex flex-col w-full space-y-space-md opacity-40 select-none pointer-events-none filter blur-[2px] transition-all">
+<!-- Search Bar Stub -->
+<div class="flex items-center w-full h-12 px-space-md bg-surface-container-lowest border border-outline-variant/60 rounded-xl shadow-sm">
+<span class="material-symbols-outlined text-outline text-[20px] mr-space-sm">search</span>
+<span class="font-body-md text-on-surface">파스타</span>
+<span class="material-symbols-outlined text-outline ml-auto text-[18px]">cancel</span>
+</div>
+<!-- Active Search Filter Summary -->
+<div class="flex items-center justify-between py-space-xs">
+<span class="font-body-sm text-on-surface-variant font-medium">검색 결과 <strong class="text-on-surface font-semibold">18개</strong></span>
+<div class="flex items-center gap-1.5 px-3 py-1 bg-surface-container rounded-full border border-outline-variant/50">
+<span class="material-symbols-outlined text-primary text-[14px]">tune</span>
+<span class="font-label-sm text-on-surface">필터 3</span>
+</div>
+</div>
+<!-- Mock Search Results Stack -->
+<div class="flex flex-col space-y-space-md">
+<div class="flex gap-space-md p-space-md bg-surface-container-lowest border border-outline-variant/50 rounded-xl shadow-sm">
+<div class="w-24 h-24 rounded-lg bg-surface-container overflow-hidden shrink-0">
+<img class="w-full h-full object-cover" data-alt="Close up of delicious steaming garlic aglio e olio pasta tossed with parsley in a rustic ceramic pan warm moody soft studio lighting aesthetic Korean food photography" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9o1UNm_QzFTrV_5M_UdQxLvkYMoN9TQ9Tg2cVtxazqVHXAF-BB8lRO56WzktJ-POcffw9Anwb5YgIM6QgYR3B05Ikl5ALL7WpjMAPTrfLg-MhTnRxf3Q5keL9Y-5M7ijohUV0yACBoglkSmWDneo6QGb3gh0N4PJzEVqMVIbRrdZA2JPpMKojwHyadNd7js1tJZkI3H0PRIiMMiK8gKNHvhbFRNbjU0Op2Ycgwi4"/>
+</div>
+<div class="flex flex-col flex-1 min-w-0 justify-between">
+<div>
+<span class="font-caption text-outline font-medium">YouTube • 요리하는남자</span>
+<p class="font-body-md text-on-surface font-medium truncate mt-0.5">실패 없는 5분 알리오 올리오 파스타 킥</p>
+</div>
+<span class="font-label-sm text-outline">저장일: 2024. 04. 12</span>
+</div>
+</div>
+<div class="flex gap-space-md p-space-md bg-surface-container-lowest border border-outline-variant/50 rounded-xl shadow-sm">
+<div class="w-24 h-24 rounded-lg bg-surface-container overflow-hidden shrink-0">
+<img class="w-full h-full object-cover" data-alt="Classic homemade tomato basil rigatoni pasta sprinkled with freshly grated parmesan on natural stone table clean archival warm tones editorial" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKxmAc-iFXyKzXp03zwvAfUZNc5wQOSU1EfbiPfSkaax3e94NZrhPJt3uNjMhZ1yC8d-qj0vwbvPHQqDSnPzWLEOmoaBw5yA6jggZxl7BrRQi6zfEHE6RpYcdGZ30A_absEC6FEWeeIuiwumS7mFQVfLh1H_Zkh0qIUbp2ESFnXTAH4UfloKq-JTKVjSqj46meZHPvkWyZVoj8W2IKDRLhR4jJt7V-nOISmFEosGY"/>
+</div>
+<div class="flex flex-col flex-1 min-w-0 justify-between">
+<div>
+<span class="font-caption text-outline font-medium">Instagram • @cook_daily</span>
+<p class="font-body-md text-on-surface font-medium truncate mt-0.5">생토마토 듬뿍 들어간 정통 리가토니 레시피</p>
+</div>
+<span class="font-label-sm text-outline">저장일: 2024. 04. 08</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Modal Backdrop Overlay (Dimmed & Warm Diffusion) -->
+<div class="fixed inset-0 z-40 bg-inverse-surface/40 backdrop-blur-[3px] transition-opacity duration-300" id="filter-backdrop"></div>
+<!-- Filter Bottom Sheet Container -->
+<div class="fixed inset-x-0 bottom-0 z-50 flex justify-center pointer-events-none pb-safe" id="filter-bottom-sheet">
+<div class="w-full max-w-[640px] bg-[#FAF8FF] border-t border-outline-variant rounded-t-[24px] shadow-2xl flex flex-col pointer-events-auto max-h-[751px] overflow-hidden transform transition-transform duration-300 ease-out">
+<!-- Grabber Drag Handle -->
+<div class="w-full flex items-center justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
+<div class="w-10 h-1.5 rounded-full bg-outline-variant"></div>
+</div>
+<!-- Sheet Header -->
+<div class="flex items-center justify-between px-margin pt-2 pb-4 border-b border-outline-variant/40">
+<div class="flex items-center gap-space-sm">
+<h2 class="font-headline-sm text-headline-sm text-[#221F33] font-bold tracking-tight">상세 필터</h2>
+<button class="flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors px-2 py-1 rounded-md active:bg-surface-container" id="reset-filter-btn" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary">refresh</span>
+<span class="font-label-sm text-label-sm">초기화</span>
+</button>
+</div>
+<button aria-label="닫기" class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:text-[#221F33] hover:bg-surface-container transition-colors" id="close-filter-btn" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Scrollable Filter Content Areas -->
+<div class="flex-1 overflow-y-auto px-margin space-y-5 py-5">
+<!-- 1. Platform Filter Section -->
+<section class="flex flex-col space-y-space-sm">
+<label class="font-label-md text-label-md text-[#221F33] font-semibold tracking-wide">플랫폼</label>
+<div aria-label="플랫폼 선택" class="flex p-1 bg-surface-container-high rounded-xl gap-1 border border-outline-variant/50" role="radiogroup">
+<button class="platform-chip flex-1 py-2 rounded-lg font-label-md text-label-md text-on-surface-variant font-medium text-center transition-all hover:text-on-surface" type="button">
+              전체
+            </button>
+<button class="platform-chip flex-1 py-2 rounded-lg font-label-md text-label-md text-on-surface-variant font-medium text-center transition-all hover:text-on-surface" type="button">
+              인스타그램
+            </button>
+<button class="platform-chip flex-1 py-2 rounded-lg font-label-md text-label-md bg-[#5E43D8] text-white font-semibold text-center shadow-sm transition-all" type="button">
+              유튜브
+            </button>
+</div>
+</section>
+<!-- 2. Topic Chips Filter Section (Multi-select) -->
+<section class="flex flex-col space-y-space-sm">
+<div class="flex items-center justify-between">
+<label class="font-label-md text-label-md text-[#221F33] font-semibold">주제 <span class="font-caption text-caption text-outline font-normal">(다중 선택 가능)</span></label>
+<span class="font-caption text-caption text-primary font-semibold">1개 선택됨</span>
+</div>
+<div class="flex flex-wrap gap-2">
+<!-- Selected Item: 요리 -->
+<button class="topic-chip flex items-center gap-1.5 px-3.5 py-2 rounded-full font-label-sm text-label-sm bg-[#5E43D8] text-white font-medium transition-all shadow-sm" data-selected="true" type="button">
+<span class="material-symbols-outlined text-[16px]">check</span>
+<span>요리</span>
+</button>
+<button class="topic-chip flex items-center gap-1.5 px-3.5 py-2 rounded-full font-label-sm text-label-sm bg-surface-container-high border border-outline-variant/60 text-[#221F33] font-medium transition-all hover:bg-surface-variant" data-selected="false" type="button">
+<span>운동 &amp; 홈트</span>
+</button>
+<button class="topic-chip flex items-center gap-1.5 px-3.5 py-2 rounded-full font-label-sm text-label-sm bg-surface-container-high border border-outline-variant/60 text-[#221F33] font-medium transition-all hover:bg-surface-variant" data-selected="false" type="button">
+<span>개발 &amp; 기술</span>
+</button>
+<button class="topic-chip flex items-center gap-1.5 px-3.5 py-2 rounded-full font-label-sm text-label-sm bg-surface-container-high border border-outline-variant/60 text-[#221F33] font-medium transition-all hover:bg-surface-variant" data-selected="false" type="button">
+<span>여행 &amp; 장소</span>
+</button>
+<button class="topic-chip flex items-center gap-1.5 px-3.5 py-2 rounded-full font-label-sm text-label-sm bg-surface-container-high border border-outline-variant/60 text-[#221F33] font-medium transition-all hover:bg-surface-variant" data-selected="false" type="button">
+<span>인테리어</span>
+</button>
+<button class="topic-chip flex items-center gap-1.5 px-3.5 py-2 rounded-full font-label-sm text-label-sm bg-surface-container-high border border-outline-variant/60 text-[#221F33] font-medium transition-all hover:bg-surface-variant" data-selected="false" type="button">
+<span>자기계발</span>
+</button>
+<button class="topic-chip flex items-center gap-1.5 px-3.5 py-2 rounded-full font-label-sm text-label-sm bg-surface-container-high border border-outline-variant/60 text-[#221F33] font-medium transition-all hover:bg-surface-variant" data-selected="false" type="button">
+<span>패션 &amp; 뷰티</span>
+</button>
+<button class="topic-chip flex items-center gap-1.5 px-3.5 py-2 rounded-full font-label-sm text-label-sm bg-surface-container-high border border-outline-variant/60 text-[#221F33] font-medium transition-all hover:bg-surface-variant" data-selected="false" type="button">
+<span>기타</span>
+</button>
+</div>
+</section>
+<!-- 3. Saved Date Range Section -->
+<section class="flex flex-col space-y-space-sm">
+<label class="font-label-md text-label-md text-[#221F33] font-semibold">저장 기간</label>
+<div class="flex flex-wrap gap-2">
+<button class="date-chip px-3 py-2 rounded-full font-label-sm text-label-sm bg-surface-container-high border border-outline-variant/60 text-[#221F33] font-medium transition-all hover:bg-surface-variant" type="button">
+              전체
+            </button>
+<button class="date-chip px-3 py-2 rounded-full font-label-sm text-label-sm bg-surface-container-high border border-outline-variant/60 text-[#221F33] font-medium transition-all hover:bg-surface-variant" type="button">
+              최근 1주일
+            </button>
+<button class="date-chip px-3 py-2 rounded-full font-label-sm text-label-sm bg-[#5E43D8] text-white font-semibold shadow-sm transition-all" type="button">
+              최근 1개월
+            </button>
+<button class="date-chip px-3 py-2 rounded-full font-label-sm text-label-sm bg-surface-container-high border border-outline-variant/60 text-[#221F33] font-medium transition-all hover:bg-surface-variant" type="button">
+              최근 3개월
+            </button>
+<button class="date-chip px-3 py-2 rounded-full font-label-sm text-label-sm bg-surface-container-high border border-outline-variant/60 text-[#221F33] font-medium transition-all hover:bg-surface-variant flex items-center gap-1" type="button">
+<span>직접 설정</span>
+<span class="material-symbols-outlined text-[14px]">calendar_today</span>
+</button>
+</div>
+</section>
+<!-- 4. Toggle Options Section -->
+<section class="flex flex-col space-y-3 pt-1">
+<!-- Favorite Only Toggle -->
+<div class="flex items-center justify-between p-3.5 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-[0_1px_4px_rgba(94,67,216,0.04)]">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-[#5E43D8] text-[20px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-[#221F33] font-medium">즐겨찾기한 영상만 보기</span>
+<span class="font-caption text-caption text-outline">북마크 보관함에 고정된 릴스/쇼츠</span>
+</div>
+</div>
+<!-- iOS style toggle switch (ON) - Active track #5E43D8 -->
+<button aria-checked="true" class="w-12 h-7 rounded-full p-0.5 bg-[#5E43D8] flex items-center justify-end transition-colors cursor-pointer shrink-0 shadow-sm" id="toggle-favorites" role="switch" type="button">
+<span class="w-6 h-6 rounded-full bg-surface-container-lowest shadow-md transform transition-transform"></span>
+</button>
+</div>
+<!-- AI Summarized Toggle -->
+<div class="flex items-center justify-between p-3.5 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-[0_1px_4px_rgba(94,67,216,0.04)]">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-[#5E43D8] text-[20px]">smart_toy</span>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-[#221F33] font-medium">AI 요약 완료된 영상만</span>
+<span class="font-caption text-caption text-outline">핵심 텍스트 및 재료 추출 완료</span>
+</div>
+</div>
+<!-- iOS style toggle switch (OFF) -->
+<button aria-checked="false" class="w-12 h-7 rounded-full p-0.5 bg-surface-variant flex items-center justify-start transition-colors cursor-pointer shrink-0" id="toggle-ai" role="switch" type="button">
+<span class="w-6 h-6 rounded-full bg-surface-container-lowest shadow-md transform transition-transform"></span>
+</button>
+</div>
+</section>
+</div>
+<!-- Bottom Pinned Action Bar -->
+<div class="w-full p-margin bg-[#FAF8FF] border-t border-outline-variant/60 shadow-[0_-4px_16px_rgba(94,67,216,0.05)] flex flex-col">
+<button class="w-full h-12 bg-[#5E43D8] text-white rounded-xl font-headline-sm text-headline-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-[0_4px_14px_rgba(94,67,216,0.3)] hover:bg-[#4623c0]" id="apply-filter-btn" type="button">
+<span>12개 결과 적용하기</span>
+<span class="material-symbols-outlined text-[20px] text-white">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<script>
+  (function initFilterInteractions() {
+    // Multi-select topic chips micro-interaction
+    const topicChips = document.querySelectorAll('.topic-chip');
+    topicChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        const isSelected = chip.getAttribute('data-selected') === 'true';
+        if (isSelected) {
+          chip.setAttribute('data-selected', 'false');
+          chip.className = 'topic-chip flex items-center gap-1.5 px-3.5 py-2 rounded-full font-label-sm text-label-sm bg-surface-container-high border border-outline-variant/60 text-[#221F33] font-medium transition-all hover:bg-surface-variant';
+          const icon = chip.querySelector('.material-symbols-outlined');
+          if (icon) icon.remove();
+        } else {
+          chip.setAttribute('data-selected', 'true');
+          chip.className = 'topic-chip flex items-center gap-1.5 px-3.5 py-2 rounded-full font-label-sm text-label-sm bg-[#5E43D8] text-white font-medium transition-all shadow-sm';
+          const spanIcon = document.createElement('span');
+          spanIcon.className = 'material-symbols-outlined text-[16px]';
+          spanIcon.textContent = 'check';
+          chip.insertBefore(spanIcon, chip.firstChild);
+        }
+      });
+    });
+
+    // Single-select Platform Segmented Control
+    const platformChips = document.querySelectorAll('.platform-chip');
+    platformChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        platformChips.forEach(c => {
+          c.className = 'platform-chip flex-1 py-2 rounded-lg font-label-md text-label-md text-on-surface-variant font-medium text-center transition-all hover:text-on-surface';
+        });
+        chip.className = 'platform-chip flex-1 py-2 rounded-lg font-label-md text-label-md bg-[#5E43D8] text-white font-semibold text-center shadow-sm transition-all';
+      });
+    });
+
+    // Single-select Date Range Chips
+    const dateChips = document.querySelectorAll('.date-chip');
+    dateChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        dateChips.forEach(c => {
+          const hasIcon = c.querySelector('.material-symbols-outlined');
+          c.className = `date-chip px-3 py-2 rounded-full font-label-sm text-label-sm bg-surface-container-high border border-outline-variant/60 text-[#221F33] font-medium transition-all hover:bg-surface-variant ${hasIcon ? 'flex items-center gap-1' : ''}`;
+        });
+        const hasIcon = chip.querySelector('.material-symbols-outlined');
+        chip.className = `date-chip px-3 py-2 rounded-full font-label-sm text-label-sm bg-[#5E43D8] text-white font-semibold shadow-sm transition-all ${hasIcon ? 'flex items-center gap-1' : ''}`;
+      });
+    });
+
+    // Toggle switch interaction
+    function setupToggle(btnId) {
+      const btn = document.getElementById(btnId);
+      if (!btn) return;
+      btn.addEventListener('click', () => {
+        const isChecked = btn.getAttribute('aria-checked') === 'true';
+        if (isChecked) {
+          btn.setAttribute('aria-checked', 'false');
+          btn.className = 'w-12 h-7 rounded-full p-0.5 bg-surface-variant flex items-center justify-start transition-colors cursor-pointer shrink-0';
+        } else {
+          btn.setAttribute('aria-checked', 'true');
+          btn.className = 'w-12 h-7 rounded-full p-0.5 bg-[#5E43D8] flex items-center justify-end transition-colors cursor-pointer shrink-0 shadow-sm';
+        }
+      });
+    }
+    setupToggle('toggle-favorites');
+    setupToggle('toggle-ai');
+
+    // Reset button feedback
+    const resetBtn = document.getElementById('reset-filter-btn');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        // Reset platform to 전체
+        platformChips.forEach((c, index) => {
+          if (index === 0) {
+            c.className = 'platform-chip flex-1 py-2 rounded-lg font-label-md text-label-md bg-[#5E43D8] text-white font-semibold text-center shadow-sm transition-all';
+          } else {
+            c.className = 'platform-chip flex-1 py-2 rounded-lg font-label-md text-label-md text-on-surface-variant font-medium text-center transition-all hover:text-on-surface';
+          }
+        });
+        // Reset topic chips
+        topicChips.forEach(chip => {
+          chip.setAttribute('data-selected', 'false');
+          chip.className = 'topic-chip flex items-center gap-1.5 px-3.5 py-2 rounded-full font-label-sm text-label-sm bg-surface-container-high border border-outline-variant/60 text-[#221F33] font-medium transition-all hover:bg-surface-variant';
+          const icon = chip.querySelector('.material-symbols-outlined');
+          if (icon) icon.remove();
+        });
+        // Reset date to 전체
+        dateChips.forEach((c, index) => {
+          const hasIcon = c.querySelector('.material-symbols-outlined');
+          if (index === 0) {
+            c.className = 'date-chip px-3 py-2 rounded-full font-label-sm text-label-sm bg-[#5E43D8] text-white font-semibold shadow-sm transition-all';
+          } else {
+            c.className = `date-chip px-3 py-2 rounded-full font-label-sm text-label-sm bg-surface-container-high border border-outline-variant/60 text-[#221F33] font-medium transition-all hover:bg-surface-variant ${hasIcon ? 'flex items-center gap-1' : ''}`;
+          }
+        });
+      });
+    }
+
+    // Dismiss Sheet Handlers
+    const closeBtn = document.getElementById('close-filter-btn');
+    const backdrop = document.getElementById('filter-backdrop');
+    const applyBtn = document.getElementById('apply-filter-btn');
+    const sheet = document.getElementById('filter-bottom-sheet');
+
+    function dismissSheet() {
+      if (sheet) {
+        const modal = sheet.firstElementChild;
+        modal.style.transform = 'translateY(100%)';
+      }
+      if (backdrop) {
+        backdrop.style.opacity = '0';
+      }
+      setTimeout(() => {
+        if (backdrop) backdrop.style.display = 'none';
+        if (sheet) sheet.style.display = 'none';
+      }, 300);
+    }
+
+    if (closeBtn) closeBtn.addEventListener('click', dismissSheet);
+    if (backdrop) backdrop.addEventListener('click', dismissSheet);
+    if (applyBtn) applyBtn.addEventListener('click', dismissSheet);
+  })();
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/80 backdrop-blur-xl border-t border-outline-variant/40" data-active-classes="text-primary font-semibold"><div class="h-16 max-w-[640px] mx-auto flex items-stretch justify-around px-space-xs"><a class="flex-1 flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-0.5 text-on-surface-variant hover:text-primary transition-colors" data-path="home" href="#"><span class="material-symbols-outlined text-[24px]">home</span><span class="font-label-sm text-label-sm">홈</span></a><a class="flex-1 flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-0.5 text-primary font-semibold transition-colors" data-path="search" href="#"><span class="material-symbols-outlined text-[24px]">search</span><span class="font-label-sm text-label-sm">검색</span></a><a class="flex-1 flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-0.5 text-on-surface-variant hover:text-primary transition-colors" data-path="add" href="#"><span class="material-symbols-outlined text-[24px]">add_circle</span><span class="font-label-sm text-label-sm">추가</span></a><a class="flex-1 flex flex-col items-center justify-center min-w-[44px] min-h-[44px] gap-0.5 text-on-surface-variant hover:text-primary transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[24px]">settings</span><span class="font-label-sm text-label-sm">설정</span></a></div></nav></body></html>

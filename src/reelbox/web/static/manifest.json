@@ -1,0 +1,16 @@
+{
+  "name": "Reelbox",
+  "short_name": "Reelbox",
+  "description": "저장한 릴스·쇼츠를 주제별로 정리한 내 보관함",
+  "lang": "ko",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FAF8FF",
+  "theme_color": "#FAF8FF",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

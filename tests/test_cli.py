@@ -40,8 +40,6 @@ def test_init_then_status(settings: Settings) -> None:
     [
         ["import", "youtube", "x"],
         ["run"],
-        ["serve"],
-        ["purge"],
         ["publish", "--dry-run"],
     ],
 )

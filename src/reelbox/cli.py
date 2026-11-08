@@ -1,5 +1,5 @@
-"""Typer 명령 모음. Phase 4까지: init, status, import, sync youtube, enrich, analyze, review,
-organize, index, search."""
+"""Typer 명령 모음. Phase 5까지: init, status, import, sync youtube, enrich, analyze, review,
+organize, index, search, serve, purge."""
 
 import logging
 import sqlite3
@@ -566,14 +566,42 @@ def serve(
     host: Annotated[str, typer.Option(help="바인딩 주소")] = "127.0.0.1",
     port: Annotated[int, typer.Option(help="포트")] = 8000,
 ) -> None:
-    """웹 서버 + 백그라운드 워커."""
-    _not_implemented("serve")
+    """웹 서버 (휴대폰 화면 + JSON API). 외부 노출은 tailscale serve 로만 한다."""
+    import uvicorn
+
+    from reelbox.web.app import create_app
+
+    settings = get_settings()
+    _open_db(settings).close()
+    if settings.token is None:
+        console.print(
+            "[red]REELBOX_TOKEN 이 비어 있음[/red] — .env 에 넣어주세요 (예: openssl rand -hex 32)"
+        )
+        raise typer.Exit(code=1)
+    if host not in ("127.0.0.1", "localhost", "::1"):
+        console.print(f"[yellow]주의: {host} 에 바인딩 — 외부 노출은 tailscale serve 로[/yellow]")
+    app_ = create_app(settings, embedder_factory=lambda: _make_embedder(settings))
+    console.print(f"[green]Reelbox 서버[/green] http://{host}:{port}  (Ctrl+C 로 종료)")
+    # proxy_headers: tailscale serve 가 붙이는 X-Forwarded-Proto 를 믿고 https 로 본다
+    uvicorn.run(app_, host=host, port=port, proxy_headers=True, log_level="warning")
 
 
 @app.command()
-def purge() -> None:
+def purge(
+    days: Annotated[int, typer.Option("--days", min=0, help="휴지통에 이보다 오래 있던 것만")] = 30,
+) -> None:
     """휴지통에서 30일 지난 항목 영구 정리."""
-    _not_implemented("purge")
+    from datetime import UTC, datetime
+
+    from reelbox.purge import purge as run_purge
+
+    settings = get_settings()
+    conn = _open_db(settings)
+    try:
+        ids = run_purge(conn, settings, now=datetime.now(UTC), days=days)
+    finally:
+        conn.close()
+    console.print(f"[green]완료[/green] 영구 정리 {len(ids)}개")
 
 
 @app.command()

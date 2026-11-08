@@ -232,8 +232,13 @@ def search(
     embedder: Embedder | None,
     filters: SearchFilters | None = None,
     limit: int = 10,
+    offset: int = 0,
 ) -> list[SearchHit]:
-    """검색어로 찾은 항목을 RRF 점수 순으로. embedder 가 None 이면 키워드 검색만 한다."""
+    """검색어로 찾은 항목을 RRF 점수 순으로. embedder 가 None 이면 키워드 검색만 한다.
+
+    offset 은 "스크롤하면 더 불러오기"용. 순위표마다 LIST_SIZE 개까지만 합치므로
+    결과는 최대 LIST_SIZE x 순위표 수 개다.
+    """
     filters = filters or SearchFilters()
     query = query.strip()
     if not query:
@@ -247,5 +252,5 @@ def search(
         query_vector = embedder.encode([query])[0].tolist()
         lists["vector"] = vector_ranking(conn, query_vector, filters)
     lists = {name: ranked for name, ranked in lists.items() if ranked}
-    merged = rrf_merge(lists)[:limit]
+    merged = rrf_merge(lists)[offset : offset + limit]
     return _load_hits(conn, merged, lists)
