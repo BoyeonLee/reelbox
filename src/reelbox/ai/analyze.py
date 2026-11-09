@@ -145,10 +145,16 @@ def analyze_items(
     *,
     limit: int | None = None,
     on_item: Callable[[int, int, db.AnalyzeInput], None] | None = None,
+    source: str | None = None,
 ) -> AnalyzeReport:
-    """분석할 차례인 항목을 처리한다. 이미 analyzed 인 것은 건드리지 않는다(멱등)."""
+    """분석할 차례인 항목을 처리한다. 이미 analyzed 인 것은 건드리지 않는다(멱등).
+
+    source 를 주면 그 입구로 들어온 항목만 (워커가 공유 항목만 처리할 때).
+    """
     prompt = load_prompt(settings.prompts_dir, settings.analyze_prompt)
-    items = db.analyze_candidates(conn, max_attempts=settings.max_attempts, limit=limit)
+    items = db.analyze_candidates(
+        conn, max_attempts=settings.max_attempts, limit=limit, source=source
+    )
     report = AnalyzeReport()
     for n, item in enumerate(items, start=1):
         if on_item is not None:

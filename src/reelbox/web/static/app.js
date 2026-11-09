@@ -67,9 +67,14 @@
       trash: [],
       status: null,
       adds: [],
+      worker: null,
+      addTimer: null,
+      guideOpen: false,
+      copied: false,
       addUrl: "",
       addMessage: null,
       adding: false,
+      refreshing: false,
 
       // 검색
       q: "",
@@ -98,6 +103,7 @@
       // --- 라우팅 ---
       async go() {
         this.route = parseHash();
+        clearTimeout(this.addTimer);
         this.cancelSelect();
         this.menuOpen = false;
         this.filterOpen = false;
@@ -198,7 +204,73 @@
       },
 
       async loadAdds() {
-        this.adds = await D.recentAdds();
+        const [adds, worker] = await Promise.all([D.recentAdds(), D.workerState()]);
+        this.adds = adds;
+        this.worker = worker;
+        this.scheduleAddsRefresh();
+      },
+
+      // 새로고침 버튼: 누른 게 보이게 잠깐이라도 아이콘을 돌리고, 실패하면 오류를 띄운다
+      async refreshAdds() {
+        if (this.refreshing) return;
+        this.refreshing = true;
+        this.error = "";
+        const started = Date.now();
+        try {
+          await this.loadAdds();
+        } catch (e) {
+          this.handleError(e);
+        } finally {
+          setTimeout(() => (this.refreshing = false), Math.max(0, 500 - (Date.now() - started)));
+        }
+      },
+
+      // 처리 중인 항목이 있으면 추가 화면을 5초마다 새로고침한다 (다른 화면으로 가면 멈춤)
+      scheduleAddsRefresh() {
+        clearTimeout(this.addTimer);
+        const w = this.worker;
+        const working = w && w.enabled && (w.busy || this.adds.some((a) => [1, 2].includes(this.stage(a).step)));
+        if (this.route.name !== "add" || !working) return;
+        this.addTimer = setTimeout(() => {
+          if (this.route.name !== "add") return;
+          if (document.visibilityState === "hidden") return this.scheduleAddsRefresh();
+          this.loadAdds().catch(() => this.scheduleAddsRefresh());
+        }, 5000);
+      },
+
+      // 추가 화면 맨 위의 워커 상태 한 줄
+      workerLine() {
+        const w = this.worker;
+        if (!w) return null;
+        if (!w.enabled) return { tone: "wait", icon: "pause_circle", text: "자동 처리가 꺼져 있어요" };
+        if (w.busy && w.step) return { tone: "work", icon: "autorenew", text: `PC에서 ${w.step} 중이에요` };
+        if (w.pending) return { tone: "wait", icon: "hourglass_top", text: `처리를 기다리는 영상 ${w.pending}개` };
+        return { tone: "done", icon: "task_alt", text: "공유한 영상을 모두 처리했어요" };
+      },
+
+      pauses() {
+        const names = { instagram: "인스타그램", youtube: "유튜브", ai: "AI 분석" };
+        const w = this.worker;
+        if (!w || !w.paused) return [];
+        return Object.entries(w.paused).map(([key, p]) => {
+          const min = Math.max(1, Math.ceil((new Date(p.until).getTime() - Date.now()) / 60000));
+          return { key, title: `${names[key] || key} 처리를 잠시 멈췄어요 · ${min}분 뒤 다시 시도`, reason: p.reason };
+        });
+      },
+
+      // --- 설정: 아이폰 단축어 ---
+      shortcutUrl() {
+        return `${location.origin}/api/items`;
+      },
+
+      async copyShortcutUrl() {
+        try {
+          await navigator.clipboard.writeText(this.shortcutUrl());
+          this.copied = true;
+          setTimeout(() => (this.copied = false), 2000);
+        } catch (_) {
+          this.copied = false;
+        }
       },
 
       // --- 검색 ---

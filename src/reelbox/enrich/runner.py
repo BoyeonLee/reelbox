@@ -264,14 +264,16 @@ def enrich_items(
     platform: Platform | None = None,
     limit: int | None = None,
     on_item: Callable[[int, int, db.EnrichCandidate], None] | None = None,
+    source: str | None = None,
 ) -> EnrichReport:
     """보강할 차례인 항목을 처리한다. 이미 enriched 인 것은 건드리지 않는다(멱등).
 
-    on_item(번호, 전체, 항목) 은 진행 표시용.
+    on_item(번호, 전체, 항목) 은 진행 표시용. source 를 주면 그 입구로 들어온 항목만
+    (워커가 공유 항목만 처리할 때).
     """
     report = EnrichReport(tmp_cleaned=clean_tmp(settings.tmp_dir))
     candidates = db.enrich_candidates(
-        conn, platform=platform, max_attempts=settings.max_attempts, limit=None
+        conn, platform=platform, max_attempts=settings.max_attempts, limit=None, source=source
     )
     total = len(candidates) if limit is None else min(limit, len(candidates))
     processed = 0

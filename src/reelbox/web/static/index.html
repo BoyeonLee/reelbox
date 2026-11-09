@@ -448,9 +448,22 @@
 
       <div class="flex items-baseline justify-between mt-8 mb-3">
         <h2 class="text-title font-bold">최근 추가 <span class="text-caption text-ink-soft font-normal" x-text="adds.length + '개'"></span></h2>
-        <button @click="loadAdds()" class="h-9 px-2 text-caption text-ink-soft flex items-center gap-1"><span class="ms text-[16px]">refresh</span>새로고침</button>
+        <button @click="refreshAdds()" :disabled="refreshing" class="h-11 px-3 text-caption text-ink-soft flex items-center gap-1 active:opacity-60"><span class="ms text-[16px]" :class="refreshing && 'animate-spin'">refresh</span><span x-text="refreshing ? '불러오는 중…' : '새로고침'"></span></button>
       </div>
-      <p class="mb-3 text-caption text-ink-soft">처리(보강 → 분석 → 색인)는 PC에서 진행돼요.</p>
+      <!-- 워커 상태: 지금 하는 일, 멈춘 단계 (Phase 6) -->
+      <template x-if="workerLine()">
+        <div class="mb-3 p-3 rounded-xl bg-surface-low flex items-center gap-2 text-[14px]">
+          <span class="ms text-[20px]" :class="{wait: 'text-ink-soft', work: 'text-primary animate-spin', done: 'text-primary'}[workerLine().tone]" x-text="workerLine().icon"></span>
+          <span class="font-medium" x-text="workerLine().text"></span>
+        </div>
+      </template>
+      <template x-for="p in pauses()" :key="p.key">
+        <div class="mb-3 p-3 rounded-xl bg-error-soft text-[14px]">
+          <p class="flex items-center gap-1.5 font-semibold text-error"><span class="ms text-[18px]">pause_circle</span><span x-text="p.title"></span></p>
+          <p class="mt-1 text-caption text-ink-soft line-clamp-3 break-all" x-text="p.reason"></p>
+        </div>
+      </template>
+      <p x-show="worker && worker.notice" class="mb-3 text-caption text-ink-soft" x-text="worker && worker.notice"></p>
       <p x-show="!adds.length" class="py-8 text-center text-ink-soft">아직 추가한 영상이 없어요</p>
       <div class="flex flex-col gap-3">
         <template x-for="it in adds" :key="it.id">
@@ -528,6 +541,43 @@
           <span class="text-[14px] text-ink-soft" x-text="status.trash + '개'"></span>
           <span class="ms text-outline">chevron_right</span>
         </a>
+      </div>
+
+      <h3 class="mt-8 mb-2 px-1 text-caption font-semibold text-ink-soft">공유로 추가</h3>
+      <div class="rounded-2xl bg-surface-white border border-line shadow-sm overflow-hidden">
+        <button @click="guideOpen = !guideOpen" class="w-full flex items-center gap-3 p-4 text-left active:bg-surface-low">
+          <span class="w-10 h-10 rounded-xl bg-primary-soft text-primary flex items-center justify-center"><span class="ms text-[22px]">ios_share</span></span>
+          <span class="flex-1"><span class="block font-semibold">아이폰 단축어 설치</span><span class="block text-caption text-ink-soft">인스타·유튜브 공유 버튼으로 바로 추가</span></span>
+          <span class="ms text-outline transition" :class="guideOpen && 'rotate-90'">chevron_right</span>
+        </button>
+        <div x-show="guideOpen" class="px-4 pb-5 text-[15px] leading-relaxed">
+          <p class="text-ink-soft">Reelbox는 앱스토어 앱이 아니라서 공유 목록에 바로 나오지 않아요. 대신 <b>단축어</b>를 한 번 만들어 두면 공유 목록에 "Reelbox에 추가"가 생겨요.</p>
+
+          <p class="mt-4 text-caption font-semibold text-ink-soft">단축어에 넣을 주소</p>
+          <div class="mt-1 p-3 rounded-xl bg-surface-low flex items-center gap-2">
+            <code class="flex-1 min-w-0 text-[13px] break-all" x-text="shortcutUrl()"></code>
+            <button @click="copyShortcutUrl()" class="shrink-0 h-9 px-3 rounded-lg bg-primary-soft text-primary text-[14px] font-semibold" x-text="copied ? '복사됨' : '복사'"></button>
+          </div>
+          <p class="mt-1 text-caption text-ink-soft">토큰은 PC의 <code>.env</code> 파일에 있는 <code>REELBOX_TOKEN</code> 값이에요 (처음 로그인할 때 넣은 것).</p>
+
+          <ol class="mt-4 flex flex-col gap-3 list-decimal pl-5">
+            <li><b>단축어</b> 앱 → 오른쪽 위 <b>+</b> → 맨 위 이름을 <b>Reelbox에 추가</b>로 바꿔요.</li>
+            <li>동작 검색에서 <b>URL의 콘텐츠 가져오기</b>(Get Contents of URL)를 추가하고, URL 자리에 위 주소를 붙여넣어요.</li>
+            <li>그 동작의 <b>›</b>(더 보기)를 눌러 설정해요.
+              <ul class="mt-1 list-disc pl-5 text-[14px]">
+                <li>방법(Method): <b>POST</b></li>
+                <li>헤더(Headers) 추가: 키 <code>Authorization</code>, 값 <code>Bearer 토큰</code> (Bearer 뒤 한 칸 띄고 토큰)</li>
+                <li>본문 요청(Request Body): <b>JSON</b> → 필드 추가 → <b>텍스트</b>, 키 <code>url</code>. 값 칸을 누르면 키보드 위에 뜨는 변수 중 <b>단축어 입력</b>(Shortcut Input)을 골라요.</li>
+              </ul>
+            </li>
+            <li>단축어 입력을 넣으면 맨 위에 <b>"[모든 항목] 입력을 [없음]에서 받기"</b>(Receive Any input from Nowhere) 칸이 생겨요. 파란 글자 <b>[없음]</b>을 눌러 <b>공유 시트</b>(Share Sheet)를 켜고, <b>[모든 항목]</b>을 눌러 <b>URL</b>과 <b>텍스트</b>만 남겨요.
+              <span class="block mt-1 text-[14px] text-ink-soft">이 칸이 안 생기면 맨 위 이름 옆 ⌄ 또는 아래 ⓘ → 세부사항 → 공유 시트에서 보기를 켜요 (iOS 버전마다 위치가 달라요).</span>
+            </li>
+            <li><b>사전 값 가져오기</b>(Get Dictionary Value)를 추가해 키를 <code>message</code>로, 그다음 <b>알림 보기</b>(Show Notification)를 추가해 내용에 <b>사전 값</b>을 넣어요.</li>
+            <li>시험: 인스타그램 릴스 → 공유(종이비행기) → <b>공유…</b> / 유튜브 쇼츠 → 공유 → <b>더보기</b> → 목록에서 <b>Reelbox에 추가</b>. "추가했어요. 곧 처리돼요" 알림이 뜨면 성공이에요.</li>
+          </ol>
+          <p class="mt-4 p-3 rounded-xl bg-surface-low text-caption text-ink-soft">PC가 켜져 있고 아이폰의 Tailscale이 연결돼 있어야 해요. 처리 상태는 아래 <b>추가</b> 탭에서 볼 수 있어요. 아이폰 버전에 따라 메뉴 이름이 조금 다를 수 있어요.</p>
+        </div>
       </div>
 
       <h3 class="mt-8 mb-2 px-1 text-caption font-semibold text-ink-soft">이 기기</h3>

@@ -7,6 +7,8 @@ FastAPI 메모 (Go 와 비교):
 - def(동기) 핸들러는 FastAPI 가 스레드 풀에서 돌려서, sqlite 처럼 막히는 호출을 써도 된다.
 """
 
+import logging
+import re
 import sqlite3
 from collections.abc import Iterator
 from datetime import date, datetime, timedelta
@@ -14,17 +16,18 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from reelbox import db
 from reelbox.purge import TRASH_DAYS, purge
 from reelbox.search import query as searcher
 from reelbox.urls import parse_url
 from reelbox.web.auth import require_token
+from reelbox.worker import SHARE_SOURCE, Worker, WorkerState
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", dependencies=[Depends(require_token)])
-
-SHARE_SOURCE = "share"  # 화면·단축어로 추가한 항목의 imported_from
 
 
 def get_conn(request: Request) -> Iterator[sqlite3.Connection]:
@@ -310,7 +313,41 @@ def empty_trash(request: Request, conn: Conn) -> Changed:
 
 
 class AddIn(BaseModel):
-    url: str = Field(min_length=1, max_length=2000)
+    # 링크 하나. 공유 시트가 캡션 등을 붙여 보내도 받을 수 있게 넉넉히
+    url: str = Field(min_length=1, max_length=10000)
+
+    @field_validator("url", mode="before")
+    @classmethod
+    def _join_list(cls, value: object) -> object:
+        """아이폰 단축어는 공유 항목이 여러 개(링크 + 제목 글 등)면 목록으로 보낸다.
+
+        목록이면 한 줄씩 이어 붙이고, 그 안에서 인식되는 첫 링크를 add() 가 고른다.
+        (mode="before": 타입 검사 전에 먼저 돈다. Go 의 UnmarshalJSON 을 직접 구현하는 것과 비슷)
+        """
+        if isinstance(value, list):
+            return "\n".join(str(v) for v in value if v is not None)
+        return value
+
+    @model_validator(mode="before")
+    @classmethod
+    def _url_anywhere(cls, data: object) -> object:
+        """단축어에서 키 칸을 비워 두거나 URL 처럼 대소문자만 다르게 적어도 받는다.
+
+        실제로 겪음: 키 칸이 비고 값 칸에 "url" 글자와 단축어 입력이 함께 들어가
+        {"": "url https://…"} 로 왔다. 그런 값들을 이어 붙여 그 안에서 링크를 찾는다.
+        전혀 다른 키(예: link)는 그대로 422 로 돌려보내 단축어 알림에 이유가 뜨게 한다.
+        """
+        if not isinstance(data, dict) or "url" in data:
+            return data
+        loose = [
+            v for k, v in data.items() if isinstance(k, str) and k.strip().lower() in ("", "url")
+        ]
+        if not loose:
+            return data
+        parts: list[str] = []
+        for v in loose:
+            parts.extend(str(x) for x in (v if isinstance(v, list) else [v]) if x is not None)
+        return {"url": "\n".join(parts)}
 
 
 class AddOut(BaseModel):
@@ -328,14 +365,33 @@ _ADD_MESSAGES = {
 }
 
 
+_URL_IN_TEXT = re.compile(r"https?://\S+")
+
+
+def _pick_url(text: str) -> str:
+    """공유 시트는 링크 앞뒤에 글(캡션 등)을 붙여 보내기도 한다 → 인식되는 첫 링크를 고른다."""
+    text = text.strip()
+    if parse_url(text) is not None:
+        return text
+    for m in _URL_IN_TEXT.finditer(text):
+        if parse_url(m.group(0)) is not None:
+            return m.group(0)
+    return text
+
+
+def _worker(request: Request) -> Worker | None:
+    return request.app.state.worker
+
+
 @router.post("/items")
-def add(conn: Conn, body: AddIn) -> AddOut:
-    """링크 하나 추가. 처리(보강→분석→색인)는 Phase 6 워커 또는 CLI 가 한다.
+def add(request: Request, conn: Conn, body: AddIn) -> AddOut:
+    """링크 하나 추가 (추가 화면·아이폰 단축어). 처리는 백그라운드 워커가 한다.
 
     휴지통에 있는 영상을 다시 공유하면 복원하고, 영구 삭제한 영상은 건너뛴다 (DESIGN.md 4장).
     """
-    parsed = parse_url(body.url.strip())
+    parsed = parse_url(_pick_url(body.url))
     if parsed is None:
+        logger.warning("추가: 인식할 수 없는 링크 (%d자)", len(body.url))
         return AddOut(result="unrecognized", message=_ADD_MESSAGES["unrecognized"], item=None)
 
     result: Literal["added", "duplicate", "restored", "deleted"]
@@ -347,6 +403,10 @@ def add(conn: Conn, body: AddIn) -> AddOut:
         outcome = db.add_item(conn, parsed.url, saved_at=None, source=SHARE_SOURCE)
         conn.commit()
         result = outcome.value  # type: ignore[assignment]
+
+    worker = _worker(request)
+    if worker is not None and result in ("added", "restored"):
+        worker.notify()
 
     item_id = db.find_item_id(conn, parsed.platform, parsed.source_id)
     cards = db.cards_by_ids(conn, [item_id]) if item_id is not None and result != "deleted" else []
@@ -361,3 +421,10 @@ def add(conn: Conn, body: AddIn) -> AddOut:
 def adds(conn: Conn) -> list[Card]:
     """추가 화면: 최근에 붙여넣기·공유로 들어온 항목과 처리 상태."""
     return [Card.of(c) for c in db.recent_adds(conn, SHARE_SOURCE)]
+
+
+@router.get("/worker")
+def worker_state(request: Request) -> WorkerState:
+    """추가 화면: 자동 처리 워커가 지금 무엇을 하는지, 멈춘 단계가 있는지."""
+    worker = _worker(request)
+    return worker.state() if worker is not None else WorkerState(enabled=False)

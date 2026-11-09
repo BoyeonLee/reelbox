@@ -245,11 +245,12 @@ def enrich_candidates(
     platform: str | None,
     max_attempts: int,
     limit: int | None,
+    source: str | None = None,
 ) -> list[EnrichCandidate]:
     """보강할 차례인 항목. imported 먼저, 그다음 다시 시도할 failed.
 
     failed 는 다른 단계(analyze 등)에서도 쓰므로, 보강 결과(transcripts)가 없는 것만
-    보강 단계의 실패로 본다.
+    보강 단계의 실패로 본다. source 를 주면 그 입구(imported_from)로 들어온 항목만.
     """
     rows = conn.execute(
         """
@@ -259,12 +260,14 @@ def enrich_candidates(
                OR (status = 'failed' AND attempts < :max_attempts
                    AND NOT EXISTS (SELECT 1 FROM transcripts AS t WHERE t.item_id = i.id)))
           AND (:platform IS NULL OR platform = :platform)
+          AND (:source IS NULL OR imported_from = :source)
         ORDER BY status = 'failed', id
         LIMIT :limit
         """,
         {
             "max_attempts": max_attempts,
             "platform": platform,
+            "source": source,
             "limit": -1 if limit is None else limit,
         },
     )
@@ -367,11 +370,12 @@ class AnalyzeInput(BaseModel):
 
 
 def analyze_candidates(
-    conn: sqlite3.Connection, *, max_attempts: int, limit: int | None
+    conn: sqlite3.Connection, *, max_attempts: int, limit: int | None, source: str | None = None
 ) -> list[AnalyzeInput]:
     """분석할 차례인 항목. enriched 먼저, 그다음 분석 단계에서 실패한 것.
 
     보강 결과(transcripts)는 있고 분석 결과(analyses)는 없는 failed 를 분석 단계 실패로 본다.
+    source 를 주면 그 입구(imported_from)로 들어온 항목만.
     """
     rows = conn.execute(
         """
@@ -382,10 +386,15 @@ def analyze_candidates(
         WHERE (i.status = 'enriched'
                OR (i.status = 'failed' AND i.attempts < :max_attempts
                    AND NOT EXISTS (SELECT 1 FROM analyses AS a WHERE a.item_id = i.id)))
+          AND (:source IS NULL OR i.imported_from = :source)
         ORDER BY i.status = 'failed', i.id
         LIMIT :limit
         """,
-        {"max_attempts": max_attempts, "limit": -1 if limit is None else limit},
+        {
+            "max_attempts": max_attempts,
+            "source": source,
+            "limit": -1 if limit is None else limit,
+        },
     )
     return [AnalyzeInput(**dict(r)) for r in rows]
 
@@ -933,6 +942,23 @@ def recent_adds(conn: sqlite3.Connection, source: str, limit: int = 20) -> list[
         (source, limit),
     )
     return [ItemCard(**dict(r)) for r in rows]
+
+
+def count_unfinished(conn: sqlite3.Connection, source: str, *, max_attempts: int) -> int:
+    """source 로 들어와 아직 처리가 끝나지 않은 항목 수 (워커가 할 일이 남았는지).
+
+    imported·enriched·analyzed 와, 다시 시도할 수 있는 failed. 휴지통 항목은 뺀다.
+    """
+    return conn.execute(
+        """
+        SELECT COUNT(*) FROM items AS i
+        LEFT JOIN user_meta AS um ON um.item_id = i.id
+        WHERE i.imported_from = ? AND um.deleted_at IS NULL
+          AND (i.status IN ('imported', 'enriched', 'analyzed')
+               OR (i.status = 'failed' AND i.attempts < ?))
+        """,
+        (source, max_attempts),
+    ).fetchone()[0]
 
 
 def find_item_id(conn: sqlite3.Connection, platform: str, source_id: str) -> int | None:

@@ -1,5 +1,5 @@
-"""Typer 명령 모음. Phase 5까지: init, status, import, sync youtube, enrich, analyze, review,
-organize, index, search, serve, purge."""
+"""Typer 명령 모음. Phase 6까지: init, status, import, sync youtube, enrich, analyze, review,
+organize, index, search, serve(+ 공유 항목 자동 처리 워커), purge."""
 
 import logging
 import sqlite3
@@ -24,6 +24,7 @@ from reelbox.search import index as indexer
 from reelbox.search import query as searcher
 from reelbox.search.embed import BgeM3Embedder
 from reelbox.urls import Platform
+from reelbox.worker import EmbedderGetter, Worker, WorkerDeps
 from reelbox.ytdlp import CookieSource, YtdlpClient
 
 app = typer.Typer(help="저장한 릴스·쇼츠를 AI로 요약·주제 분류하는 개인용 앱", no_args_is_help=True)
@@ -561,6 +562,24 @@ def run() -> None:
     _not_implemented("run")
 
 
+def _worker_deps(settings: Settings, get_embedder: EmbedderGetter) -> WorkerDeps:
+    """serve 의 자동 처리 워커가 쓸 실제 도구. API 키가 없으면 보강까지만 한다."""
+    has_key = settings.anthropic_api_key is not None
+    if not has_key:
+        console.print("[yellow]ANTHROPIC_API_KEY 가 없어 공유 항목은 보강까지만 처리됨[/yellow]")
+    return WorkerDeps(
+        enrich=runner.EnrichDeps(
+            open_client=_client_factory(settings),
+            transcriber=WhisperTranscriber(
+                settings.whisper_model, settings.whisper_device, settings.whisper_compute_type
+            ),
+        ),
+        llm=_make_llm(settings) if has_key else None,
+        organize_llm=_make_organize_llm(settings) if has_key else None,
+        embedder=get_embedder,
+    )
+
+
 @app.command()
 def serve(
     host: Annotated[str, typer.Option(help="바인딩 주소")] = "127.0.0.1",
@@ -580,7 +599,12 @@ def serve(
         raise typer.Exit(code=1)
     if host not in ("127.0.0.1", "localhost", "::1"):
         console.print(f"[yellow]주의: {host} 에 바인딩 — 외부 노출은 tailscale serve 로[/yellow]")
-    app_ = create_app(settings, embedder_factory=lambda: _make_embedder(settings))
+    app_ = create_app(
+        settings,
+        embedder_factory=lambda: _make_embedder(settings),
+        # 공유로 들어온 항목을 보강→분석→주제 배정→색인까지 자동 처리 (Phase 6)
+        make_worker=lambda get_embedder: Worker(settings, _worker_deps(settings, get_embedder)),
+    )
     console.print(f"[green]Reelbox 서버[/green] http://{host}:{port}  (Ctrl+C 로 종료)")
     # proxy_headers: tailscale serve 가 붙이는 X-Forwarded-Proto 를 믿고 https 로 본다
     uvicorn.run(app_, host=host, port=port, proxy_headers=True, log_level="warning")

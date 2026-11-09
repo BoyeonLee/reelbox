@@ -13,6 +13,7 @@ from reelbox.config import Settings
 from reelbox.search import index as indexer
 from reelbox.web.app import create_app
 from reelbox.web.auth import COOKIE_NAME
+from reelbox.worker import WorkerState
 
 from .conftest import FakeEmbedder, analyzed_item
 
@@ -304,3 +305,94 @@ def test_detail_of_unanalyzed_item(client: TestClient, conn: sqlite3.Connection)
     item_id = db.find_item_id(conn, "youtube", "yyyyyyyyyyy")
     body = client.get(f"/api/items/{item_id}", headers=AUTH).json()
     assert (body["status"], body["tags"], body["key_points"]) == ("imported", [], [])
+
+
+# --- Phase 6: 공유 처리 워커 ---
+
+
+class SpyWorker:
+    """워커 대신. notify 호출만 센다."""
+
+    def __init__(self) -> None:
+        self.notified = 0
+        self.started = False
+        self.stopped = False
+
+    def start(self) -> None:
+        self.started = True
+
+    def stop(self) -> None:
+        self.stopped = True
+
+    def notify(self) -> None:
+        self.notified += 1
+
+    def state(self) -> WorkerState:
+        return WorkerState(busy=True, step="분석", pending=1)
+
+
+def test_worker_state_when_disabled(client: TestClient) -> None:
+    assert client.get("/api/worker", headers=AUTH).json()["enabled"] is False
+
+
+def test_add_wakes_worker_and_reports_state(
+    web_settings: Settings, conn: sqlite3.Connection
+) -> None:
+    spy = SpyWorker()
+    app = create_app(web_settings, auto_purge=False, now=lambda: NOW, make_worker=lambda _: spy)
+    with TestClient(app) as c:
+        assert spy.started
+        url = {"url": "https://youtu.be/zzzzzzzzzzz"}
+        c.post("/api/items", json=url, headers=AUTH)
+        c.post("/api/items", json=url, headers=AUTH)  # 중복은 깨우지 않음
+        assert spy.notified == 1
+        state = c.get("/api/worker", headers=AUTH).json()
+        assert (state["enabled"], state["busy"], state["step"]) == (True, True, "분석")
+    assert spy.stopped
+
+
+def test_add_picks_url_out_of_shared_text(client: TestClient) -> None:
+    text = "이 릴스 보세요! https://www.instagram.com/reel/AbCdEfGhIjK/?igsh=xyz 진짜 맛있음"
+    body = client.post("/api/items", json={"url": text}, headers=AUTH).json()
+    assert body["result"] == "added"
+    assert body["item"]["url"] == "https://www.instagram.com/reel/AbCdEfGhIjK/"
+
+
+def test_static_shell_is_revalidated(client: TestClient) -> None:
+    # 새 index.html 과 옛 app.js 가 섞이지 않게 화면 파일은 매번 바뀌었는지 확인시킨다
+    for path in ["/", "/app.js", "/data.js", "/sw.js"]:
+        assert client.get(path).headers["cache-control"] == "no-cache"
+
+
+# --- 아이폰 단축어가 보내는 모양 ---
+
+
+def test_add_accepts_list_from_shortcut(client: TestClient) -> None:
+    # 공유 항목이 여러 개면 단축어는 url 을 목록으로 보낸다 (제목 글 + 링크)
+    body = {"url": ["브라운버터 파스타 #shorts", "https://youtube.com/shorts/SggDZVu0DPk?si=abc"]}
+    res = client.post("/api/items", json=body, headers=AUTH).json()
+    assert res["result"] == "added"
+    assert res["item"]["url"] == "https://www.youtube.com/shorts/SggDZVu0DPk"
+
+
+def test_errors_carry_message_for_shortcut_notification(client: TestClient) -> None:
+    bad_token = client.post(
+        "/api/items", json={"url": "https://youtu.be/zzzzzzzzzzz"}, headers={"Authorization": "x"}
+    )
+    assert bad_token.status_code == 401
+    assert "토큰" in bad_token.json()["message"]
+    assert bad_token.json()["detail"] == "토큰이 필요합니다"  # 화면(data.js)은 detail 을 읽는다
+
+    bad_body = client.post(
+        "/api/items", json={"link": "https://youtu.be/zzzzzzzzzzz"}, headers=AUTH
+    )
+    assert bad_body.status_code == 422
+    assert "url" in bad_body.json()["message"]
+
+
+def test_add_finds_url_when_shortcut_key_is_wrong(client: TestClient) -> None:
+    # 단축어 키 칸이 비고 값에 "url" 글자 + 링크가 들어간 실제 사례
+    body = {"": "url https://www.instagram.com/reel/AbCdEfGhIjK/?igsh=xyz"}
+    res = client.post("/api/items", json=body, headers=AUTH).json()
+    assert res["result"] == "added"
+    assert res["item"]["url"] == "https://www.instagram.com/reel/AbCdEfGhIjK/"

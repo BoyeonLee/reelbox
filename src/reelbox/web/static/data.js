@@ -71,6 +71,8 @@
     hiddenItems: () => request("GET", "/api/hidden"),
     trashItems: () => request("GET", "/api/trash"),
     recentAdds: () => request("GET", "/api/adds"),
+    // 자동 처리 워커 → { enabled, busy, step, pending, paused: { 단계: { reason, until } }, notice }
+    workerState: () => request("GET", "/api/worker"),
 
     // 숨기기·삭제·복원. 모두 { ids: [바뀐 id] } 를 돌려준다.
     setHidden: (id, hidden) => request("PATCH", `/api/items/${id}`, { hidden }),

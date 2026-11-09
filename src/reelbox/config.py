@@ -81,6 +81,12 @@ class Settings(BaseSettings):
     index_transcript_chars: int = 1000  # 임베딩에 넣을 자막 앞부분 글자 수
     similar_count: int = 5  # 영상마다 미리 계산해 둘 "비슷한 영상" 수
 
+    # 공유 항목 자동 처리 워커 (serve 안에서 돈다, Phase 6)
+    worker_poll_sec: float = Field(default=60.0, gt=0)  # 새 공유가 없어도 이 간격으로 할 일 확인
+    # 인스타 차단·쿠키 오류나 Claude API 오류가 나면 그 단계만 이만큼 쉰다.
+    # 바로 다시 두드리면 같은 항목의 시도 횟수(max_attempts)만 써 버리기 때문.
+    worker_backoff_sec: float = Field(default=30 * 60.0, ge=0)
+
     @model_validator(mode="after")
     def _check_delay(self) -> Self:
         if self.instagram_delay_max_sec < self.instagram_delay_min_sec:
