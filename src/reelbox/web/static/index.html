@@ -102,7 +102,7 @@
     <button @click="selectAll()" class="h-11 px-2 font-semibold text-primary">전체선택</button>
   </div>
   <!-- 탭 화면: 로고 + 연결 상태 -->
-  <div x-show="!selecting && ['home','search','add','settings'].includes(route.name)" class="h-14 px-4 flex items-center justify-between max-w-3xl mx-auto">
+  <div x-show="!selecting && ['home','search','add','favorites','settings'].includes(route.name)" class="h-14 px-4 flex items-center justify-between max-w-3xl mx-auto">
     <a href="#/" class="flex items-center gap-2">
       <span class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center"><span class="ms text-on-primary text-[20px]">video_library</span></span>
       <span class="text-title font-bold">Reelbox</span>
@@ -112,12 +112,12 @@
     </span>
   </div>
   <!-- 하위 화면: 뒤로 + 제목 -->
-  <div x-show="!selecting && !['home','search','add','settings'].includes(route.name)" class="h-14 px-1 flex items-center justify-between max-w-3xl mx-auto">
+  <div x-show="!selecting && !['home','search','add','favorites','settings'].includes(route.name)" class="h-14 px-1 flex items-center justify-between max-w-3xl mx-auto">
     <button @click="back()" class="w-11 h-11 flex items-center justify-center" aria-label="뒤로"><span class="ms text-[26px]">arrow_back_ios_new</span></button>
     <span class="text-title font-semibold truncate px-2"
           x-text="{topic: topic ? topic.name : '', item: '영상 상세', hidden: '숨긴 항목', trash: '휴지통', failed: '실패한 항목'}[route.name] || ''"></span>
     <div class="w-11 h-11 relative">
-      <template x-if="route.name === 'item' && detail">
+      <template x-if="(route.name === 'item' && detail) || (route.name === 'topic' && topic)">
         <button @click="menuOpen = !menuOpen" class="w-11 h-11 flex items-center justify-center" aria-label="더보기"><span class="ms text-[24px]">more_horiz</span></button>
       </template>
       <template x-if="route.name === 'trash' && trash.length">
@@ -130,7 +130,17 @@
 <!-- ⋯ 메뉴 (영상 상세) -->
 <div x-show="menuOpen" x-transition.opacity class="fixed inset-0 z-50" @click="menuOpen = false">
   <div class="absolute right-3 top-[calc(env(safe-area-inset-top,0px)+52px)] w-52 rounded-2xl bg-surface-white shadow-xl border border-line overflow-hidden" @click.stop>
-    <template x-if="detail && !detail.deleted_at">
+    <template x-if="route.name === 'topic' && topic">
+      <div>
+        <button @click="openRename()" class="w-full h-12 px-4 flex items-center gap-3 text-left active:bg-surface-low">
+          <span class="ms text-[20px]">edit</span>이름 바꾸기
+        </button>
+        <button @click="openTopicSheet('merge')" class="w-full h-12 px-4 flex items-center gap-3 text-left border-t border-line active:bg-surface-low">
+          <span class="ms text-[20px]">merge</span>다른 주제로 합치기
+        </button>
+      </div>
+    </template>
+    <template x-if="route.name === 'item' && detail && !detail.deleted_at">
       <div>
         <button @click="menuOpen = false; act([detail.id], detail.hidden ? 'unhide' : 'hide')" class="w-full h-12 px-4 flex items-center gap-3 text-left active:bg-surface-low">
           <span class="ms text-[20px]" x-text="detail.hidden ? 'visibility' : 'visibility_off'"></span><span x-text="detail.hidden ? '숨김 해제' : '숨기기'"></span>
@@ -140,7 +150,7 @@
         </button>
       </div>
     </template>
-    <template x-if="detail && detail.deleted_at">
+    <template x-if="route.name === 'item' && detail && detail.deleted_at">
       <button @click="menuOpen = false; act([detail.id], 'restore')" class="w-full h-12 px-4 flex items-center gap-3 text-left active:bg-surface-low">
         <span class="ms text-[20px]">restore_from_trash</span>복원
       </button>
@@ -197,6 +207,21 @@
     </section>
   </template>
 
+  <!-- ========== 즐겨찾기 ========== -->
+  <template x-if="route.name === 'favorites'">
+    <section class="pt-4 pb-3">
+      <h1 class="text-headline font-bold">즐겨찾기</h1>
+      <p x-show="favorites.length" class="text-body text-ink-soft mt-0.5">별표한 영상 · 최근 저장순 · 길게 누르면 여러 개 선택</p>
+      <template x-if="favoritesLoaded && !favorites.length">
+        <div class="py-16 text-center text-ink-soft">
+          <span class="ms text-[48px] text-outline">star</span>
+          <p class="mt-2">아직 즐겨찾기가 없어요</p>
+          <p class="mt-1 text-caption">영상 상세에서 ★ 즐겨찾기를 누르면 여기에 모여요</p>
+        </div>
+      </template>
+    </section>
+  </template>
+
   <!-- ========== 검색 ========== -->
   <template x-if="route.name === 'search'">
     <section class="pt-4">
@@ -244,8 +269,8 @@
   </template>
 
   <!-- 공용 카드 목록 (홈 최근 저장 · 검색 결과). 탭하면 상세, ▶ 는 원본 앱, 길게 누르면 선택 -->
-  <div x-show="['home', 'search'].includes(route.name)" class="flex flex-col gap-3">
-    <template x-for="it in (route.name === 'home' ? (home ? home.recent : []) : results)" :key="it.id">
+  <div x-show="['home', 'search', 'favorites'].includes(route.name)" class="flex flex-col gap-3">
+    <template x-for="it in (route.name === 'home' ? (home ? home.recent : []) : route.name === 'favorites' ? favorites : results)" :key="it.id">
       <div @pointerdown="pressDown(it, $event)" @pointermove="pressMove($event)" @pointerup="pressUp()" @pointercancel="pressUp()" @pointerleave="pressUp()"
            @click="tapCard(it)" @contextmenu.prevent
            :class="isSelected(it.id) ? 'ring-2 ring-primary' : ''"
@@ -263,6 +288,7 @@
         <div class="flex-1 min-w-0 flex flex-col">
           <div class="flex items-center gap-1.5 text-caption">
             <template x-if="it.topic"><span class="h-6 px-2 rounded-md bg-primary-soft text-primary font-semibold flex items-center truncate max-w-[60%]" x-text="it.topic"></span></template>
+            <span x-show="it.favorite" class="ms ms-fill text-[16px] text-[#e0a100]" aria-label="즐겨찾기">star</span>
             <span class="text-ink-soft truncate" x-text="ago(it.saved_at)"></span>
           </div>
           <p class="mt-1.5 font-bold text-[16px] leading-snug line-clamp-2" x-text="title(it)"></p>
@@ -278,6 +304,13 @@
       </div>
     </template>
   </div>
+
+  <template x-if="route.name === 'favorites'">
+    <div>
+      <p x-show="loading" class="py-6 text-center text-ink-soft text-caption">불러오는 중…</p>
+      <p x-show="favoritesNext === null && favorites.length" class="py-8 text-center text-caption text-ink-soft">즐겨찾기를 모두 불러왔어요</p>
+    </div>
+  </template>
 
   <template x-if="route.name === 'search'">
     <div>
@@ -365,6 +398,18 @@
       <h1 class="text-[22px] leading-[30px] font-bold tracking-tight mt-2" x-text="title(detail)"></h1>
       <p x-show="detail.author" class="text-[14px] text-ink-soft mt-1" x-text="detail.author"></p>
 
+      <div x-show="!detail.deleted_at" class="mt-4 grid grid-cols-2 gap-2">
+        <button @click="toggleFavorite()" :aria-pressed="detail.favorite"
+                :class="detail.favorite ? 'bg-[#fff4d6] border-[#f2d27a] text-[#8a6200]' : 'bg-surface-white border-line text-ink'"
+                class="h-12 rounded-xl border font-semibold text-[15px] flex items-center justify-center gap-1.5 active:scale-[0.98] transition">
+          <span class="ms text-[22px]" :class="detail.favorite ? 'ms-fill text-[#e0a100]' : ''">star</span><span x-text="detail.favorite ? '즐겨찾기됨' : '즐겨찾기'"></span>
+        </button>
+        <button x-show="['analyzed','indexed'].includes(detail.status)" @click="openTopicSheet('move')"
+                class="h-12 rounded-xl border border-line bg-surface-white font-semibold text-[15px] flex items-center justify-center gap-1.5 active:scale-[0.98] transition">
+          <span class="ms text-[22px] text-primary">drive_file_move</span>주제 바꾸기
+        </button>
+      </div>
+
       <template x-if="!['analyzed','indexed'].includes(detail.status)">
         <div class="mt-5 p-4 rounded-2xl bg-surface-low text-ink-soft text-[14px]" x-text="'아직 요약 전이에요 (' + stage(detail).label + ')' + (detail.error ? ' · ' + detail.error : '')"></div>
       </template>
@@ -391,6 +436,16 @@
         <template x-for="t in detail.tags" :key="t">
           <button @click="submitSearch(t)" class="h-9 px-3 rounded-full bg-surface-low border border-line text-primary text-[14px] font-medium" x-text="'#' + t"></button>
         </template>
+      </div>
+
+      <div x-show="!detail.deleted_at" class="mt-4 p-5 rounded-2xl bg-surface-white border border-line shadow-sm">
+        <h2 class="flex items-center gap-2 text-title font-bold"><span class="w-8 h-8 rounded-full bg-surface-low flex items-center justify-center"><span class="ms text-primary text-[20px]">edit_note</span></span>메모</h2>
+        <textarea x-model="noteDraft" rows="3" maxlength="2000" placeholder="나만 보는 메모 (예: 주말에 해 보기)"
+                  class="mt-3 w-full p-3 rounded-xl bg-surface-low border border-line text-[16px] leading-6 resize-y focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
+        <div x-show="noteChanged()" class="mt-2 flex justify-end gap-2">
+          <button @click="noteDraft = detail.note || ''" class="h-11 px-4 rounded-xl bg-surface-low font-semibold text-[14px]">취소</button>
+          <button @click="saveNote()" :disabled="noteSaving" class="h-11 px-5 rounded-xl bg-primary text-on-primary font-semibold text-[14px] disabled:opacity-60">저장</button>
+        </div>
       </div>
 
       <template x-if="detail.transcript">
@@ -591,20 +646,38 @@
     </section>
   </template>
 
-  <!-- ========== 실패한 항목 (읽기 전용) ========== -->
-  <template x-if="route.name === 'failed' && status">
+  <!-- ========== 실패한 항목 (다시 시도) ========== -->
+  <template x-if="route.name === 'failed'">
     <section class="pt-4">
-      <p x-show="!status.failures.length" class="py-16 text-center text-ink-soft">실패한 항목이 없어요</p>
+      <p x-show="!failures.length" class="py-16 text-center text-ink-soft">실패한 항목이 없어요</p>
+      <template x-if="failures.length">
+        <div class="mb-4">
+          <button @click="retryAll()" :disabled="retrying"
+                  class="w-full h-12 rounded-xl bg-primary text-on-primary font-semibold flex items-center justify-center gap-1.5 shadow-lg shadow-primary/20 disabled:opacity-60">
+            <span class="ms text-[20px]" :class="retrying ? 'animate-spin' : ''">refresh</span><span x-text="'모두 다시 시도 (' + failures.length + '개)'"></span>
+          </button>
+          <p class="mt-2 text-caption text-ink-soft text-center">PC가 켜져 있으면 자동으로 처리해요. 인스타그램은 요청 간격을 지켜서 조금 걸려요</p>
+        </div>
+      </template>
       <div class="flex flex-col gap-3">
-        <template x-for="f in status.failures" :key="f.id">
-          <a :href="'#/item/' + f.id" class="block p-4 rounded-2xl bg-surface-white border border-line shadow-sm">
+        <template x-for="f in failures" :key="f.id">
+          <div class="p-4 rounded-2xl bg-surface-white border border-line shadow-sm">
             <div class="flex items-center gap-2 text-caption text-ink-soft">
-              <span class="h-6 px-2 rounded-md bg-error-soft text-error font-semibold flex items-center" x-text="f.attempts + '회 시도'"></span>
+              <span x-show="!f.retry_requested || f.attempts" class="h-6 px-2 rounded-md bg-error-soft text-error font-semibold flex items-center" x-text="f.attempts + '회 시도'"></span>
+              <span x-show="f.retry_requested && !f.attempts" class="h-6 px-2 rounded-md bg-primary-soft text-primary font-semibold flex items-center">다시 시도 대기 중</span>
               <span x-text="platformName(f.platform) + ' · ' + ago(f.updated_at)"></span>
             </div>
-            <p class="mt-2 text-[14px] break-all" x-text="f.url"></p>
+            <a :href="'#/item/' + f.id" class="block mt-2">
+              <p x-show="f.title" class="font-semibold text-[15px] line-clamp-2" x-text="f.title"></p>
+              <p class="text-[14px] text-ink-soft break-all" x-text="f.url"></p>
+            </a>
             <p class="mt-1 text-[14px] text-error line-clamp-2" x-text="f.error || ''"></p>
-          </a>
+            <div class="mt-3 flex gap-2">
+              <a :href="f.url" target="_blank" rel="noopener" class="flex-1 h-11 rounded-xl bg-surface-low font-semibold text-[14px] flex items-center justify-center gap-1"><span class="ms text-[18px]">open_in_new</span>원본 열기</a>
+              <button @click="retryOne(f)" :disabled="f.retry_requested && !f.attempts"
+                      class="flex-1 h-11 rounded-xl bg-primary-soft text-primary font-semibold text-[14px] flex items-center justify-center gap-1 disabled:opacity-50"><span class="ms text-[18px]">refresh</span>다시 시도</button>
+            </div>
+          </div>
         </template>
       </div>
     </section>
@@ -715,7 +788,7 @@
     <div class="px-5 pt-3 pb-5">
       <div class="flex items-center justify-between">
         <h2 class="text-title font-bold">필터</h2>
-        <button @click="draft = {platform: '', topic: '', period: ''}" class="h-11 px-2 text-[14px] text-ink-soft">초기화</button>
+        <button @click="draft = {platform: '', topic: '', period: '', favorite: ''}" class="h-11 px-2 text-[14px] text-ink-soft">초기화</button>
       </div>
       <h3 class="mt-3 mb-2 font-semibold text-[14px]">플랫폼</h3>
       <div class="flex flex-wrap gap-2">
@@ -736,8 +809,62 @@
           <button @click="draft.period = p.key" :class="draft.period === p.key ? 'bg-primary text-on-primary' : 'bg-surface-low text-ink'" class="h-10 px-4 rounded-full text-[14px] font-semibold" x-text="p.label"></button>
         </template>
       </div>
+      <h3 class="mt-5 mb-2 font-semibold text-[14px]">즐겨찾기</h3>
+      <div class="flex flex-wrap gap-2">
+        <button @click="draft.favorite = ''" :class="!draft.favorite ? 'bg-primary text-on-primary' : 'bg-surface-low text-ink'" class="h-10 px-4 rounded-full text-[14px] font-semibold">전체</button>
+        <button @click="draft.favorite = '1'" :class="draft.favorite ? 'bg-primary text-on-primary' : 'bg-surface-low text-ink'" class="h-10 px-4 rounded-full text-[14px] font-semibold flex items-center gap-1"><span class="ms ms-fill text-[18px]">star</span>즐겨찾기만</button>
+      </div>
       <button @click="applyFilter()" class="mt-6 w-full h-14 rounded-2xl bg-primary text-on-primary font-semibold text-[16px] flex items-center justify-center gap-1.5 shadow-lg shadow-primary/20">적용하기<span class="ms text-[20px]">arrow_forward</span></button>
     </div>
+  </div>
+</div>
+
+<!-- ========== 주제 고르기 시트 (영상 주제 바꾸기 · 주제 합치기) ========== -->
+<div x-show="topicSheet" class="fixed inset-0 z-50" @keydown.escape.window="topicSheet = null">
+  <div x-show="topicSheet" x-transition.opacity class="absolute inset-0 bg-ink/40" @click="topicSheet = null"></div>
+  <div x-show="topicSheet" x-transition:enter="transition duration-200" x-transition:enter-start="translate-y-full" x-transition:leave="transition duration-150" x-transition:leave-end="translate-y-full"
+       class="absolute bottom-0 inset-x-0 max-w-3xl mx-auto rounded-t-3xl bg-surface-white pb-safe max-h-[75vh] flex flex-col">
+    <div class="w-10 h-1.5 rounded-full bg-line mx-auto mt-3"></div>
+    <div class="px-5 pt-3 pb-2">
+      <h2 class="text-title font-bold" x-text="topicSheet === 'merge' ? '어느 주제로 합칠까요?' : '어느 주제로 옮길까요?'"></h2>
+      <p class="text-caption text-ink-soft mt-1" x-text="topicSheet === 'merge' ? (topic ? '\'' + topic.name + '\'의 영상이 모두 옮겨 가고, 이 주제는 없어져요' : '') : '고른 주제는 자동 정리가 바꾸지 않아요'"></p>
+    </div>
+    <div class="px-3 pb-4 overflow-y-auto">
+      <p x-show="!sheetTopics().length" class="py-8 text-center text-ink-soft">고를 수 있는 다른 주제가 없어요</p>
+      <template x-for="t in sheetTopics()" :key="t.id">
+        <button @click="pickTopic(t)" class="w-full h-14 px-3 rounded-xl flex items-center gap-3 text-left active:bg-surface-low">
+          <span class="ms text-primary text-[22px]">folder</span>
+          <span class="flex-1 min-w-0 font-semibold truncate" x-text="t.name"></span>
+          <span class="shrink-0 text-caption text-ink-soft" x-text="t.count + '개'"></span>
+        </button>
+      </template>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 주제 이름 바꾸기 ========== -->
+<div x-show="renameOpen" class="fixed inset-0 z-50 flex items-center justify-center px-6" @keydown.escape.window="renameOpen = false">
+  <div x-show="renameOpen" x-transition.opacity class="absolute inset-0 bg-ink/40" @click="renameOpen = false"></div>
+  <form x-show="renameOpen" x-transition.scale.95 @submit.prevent="saveRename()" class="relative w-full max-w-sm rounded-3xl bg-surface-white p-6 shadow-2xl">
+    <h2 class="text-[20px] font-bold">주제 이름 바꾸기</h2>
+    <p class="mt-1 text-caption text-ink-soft">바꾼 주제는 자동 정리가 덮어쓰지 않아요</p>
+    <input type="text" x-model="renameInput" maxlength="40" enterkeyhint="done" aria-label="주제 이름"
+           class="mt-4 w-full h-12 px-4 rounded-xl bg-surface-low border border-line text-[16px] focus:outline-none focus:ring-2 focus:ring-primary">
+    <p x-show="renameError" class="mt-2 text-[14px] text-error" x-text="renameError"></p>
+    <button type="submit" class="mt-5 w-full h-12 rounded-xl bg-primary text-on-primary font-semibold">저장</button>
+    <button type="button" @click="renameOpen = false" class="mt-2 w-full h-12 rounded-xl bg-surface-low font-semibold">취소</button>
+  </form>
+</div>
+
+<!-- ========== 주제 합치기 확인 ========== -->
+<div x-show="mergeInto" class="fixed inset-0 z-50 flex items-center justify-center px-6">
+  <div x-show="mergeInto" x-transition.opacity class="absolute inset-0 bg-ink/40" @click="mergeInto = null"></div>
+  <div x-show="mergeInto" x-transition.scale.95 class="relative w-full max-w-sm rounded-3xl bg-surface-white p-6 text-center shadow-2xl">
+    <span class="w-14 h-14 mx-auto rounded-full bg-primary-soft text-primary flex items-center justify-center"><span class="ms text-[28px]">merge</span></span>
+    <h2 class="mt-4 text-[20px] font-bold">주제를 합칠까요?</h2>
+    <p class="mt-3 text-[14px] text-ink-soft" x-text="topic && mergeInto ? '\'' + topic.name + '\'의 영상 ' + topic.count + '개를 \'' + mergeInto.name + '\'(으)로 옮기고, \'' + topic.name + '\' 주제는 없어져요.' : ''"></p>
+    <button @click="doMerge()" class="mt-6 w-full h-12 rounded-xl bg-primary text-on-primary font-semibold">합치기</button>
+    <button @click="mergeInto = null" class="mt-2 w-full h-12 rounded-xl bg-surface-low font-semibold">취소</button>
   </div>
 </div>
 
@@ -756,8 +883,8 @@
 
 <!-- ========== 하단 탭바 ========== -->
 <nav x-show="!selecting" class="fixed bottom-0 inset-x-0 z-30 bg-surface/90 backdrop-blur-xl border-t border-line pb-safe">
-  <div class="max-w-3xl mx-auto grid grid-cols-4 h-16">
-    <template x-for="t in [['home', '#/', 'home', '홈'], ['search', '#/search', 'search', '검색'], ['add', '#/add', 'add_circle', '추가'], ['settings', '#/settings', 'settings', '설정']]" :key="t[0]">
+  <div class="max-w-3xl mx-auto grid grid-cols-5 h-16">
+    <template x-for="t in [['home', '#/', 'home', '홈'], ['search', '#/search', 'search', '검색'], ['add', '#/add', 'add_circle', '추가'], ['favorites', '#/favorites', 'star', '즐겨찾기'], ['settings', '#/settings', 'settings', '설정']]" :key="t[0]">
       <a :href="t[1]" class="flex flex-col items-center justify-center gap-0.5" :class="tab(t[0]) ? 'text-primary' : 'text-ink-soft'">
         <span class="ms text-[26px]" :class="tab(t[0]) ? 'ms-fill' : ''" x-text="t[2]"></span>
         <span class="text-[11px] font-semibold" x-text="t[3]"></span>

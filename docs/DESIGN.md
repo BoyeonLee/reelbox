@@ -96,13 +96,13 @@ Go가 더 익숙하더라도, 이 프로젝트는 AI·영상 도구 때문에 Py
 
 | 테이블 | 주요 열 | 설명 |
 | --- | --- | --- |
-| `items` | id, platform(`instagram`/`youtube`), source\_id, url, saved\_at, imported\_from, collection, title, author, description, duration\_sec, thumbnail\_url, thumbnail\_path, media\_type(`video`/`image`), status, error, attempts, created\_at, updated\_at | 저장한 영상 하나 = 한 줄. (platform, source\_id) 유일 |
+| `items` | id, platform(`instagram`/`youtube`), source\_id, url, saved\_at, imported\_from, collection, title, author, description, duration\_sec, thumbnail\_url, thumbnail\_path, media\_type(`video`/`image`), status, error, attempts, retry\_requested, created\_at, updated\_at | 저장한 영상 하나 = 한 줄. (platform, source\_id) 유일. retry\_requested는 실패 화면에서 다시 시도를 누른 표시 (Phase 7, `004_user_edits.sql`) |
 | `transcripts` | item\_id, source(`captions`/`whisper`/`none`), language, text | 자막 또는 음성 받아쓰기 결과 |
 | `analyses` | item\_id, summary\_ko, key\_points(JSON), tags(JSON), raw\_topic, content\_language, model, prompt\_version, created\_at | AI 분석 결과. prompt\_version으로 재분석 대상 판별 |
 | `topics` | id, name, description, parent\_id, is\_user\_edited | 주제(바인더). 내가 수정한 주제는 자동 정리가 덮어쓰지 않음 |
-| `item_topics` | item\_id, topic\_id, is\_primary | 영상↔주제 연결. 하나는 대표 주제 |
+| `item_topics` | item\_id, topic\_id, is\_primary, is\_user\_set | 영상↔주제 연결. 하나는 대표 주제. is\_user\_set은 내가 직접 고른 연결 (Phase 7) |
 | `embeddings` (sqlite-vec) | item\_id, vector(1024) | 의미 검색용 |
-| `items_fts` (FTS5, trigram) | title, description, transcript, summary, tags | 키워드 검색용 |
+| `items_fts` (FTS5, trigram) | title, description, transcript, summary, tags, note | 키워드 검색용. note(내 메모)는 Phase 7에 추가 (`005_note_search.sql`) |
 | `user_meta` | item\_id, favorite, note, hidden\_at, deleted\_at | 내가 휴대폰에서 남기는 표시·메모, 숨김·휴지통 시각 |
 | `fetch_log` | id, platform, item\_id, fetched\_at | 보강 단계가 플랫폼에 요청한 기록. 인스타 일일 한도(최근 24시간 개수)를 센다 (Phase 2, `002_fetch_log.sql`) |
 | `item_similar` | item\_id, similar\_id, rank, score | 영상마다 미리 계산한 "비슷한 영상" 5개. index 때마다 전부 다시 계산 (Phase 4, `003_similar.sql`) |
@@ -165,7 +165,7 @@ Go가 더 익숙하더라도, 이 프로젝트는 AI·영상 도구 때문에 Py
 비유: 직원들이 메모에 제멋대로 붙인 라벨(raw\_topic)을 팀장이 모아보고 바인더 10\~20개로 정리하는 것.
 
 1. 모든 raw\_topic과 개수를 모아 Claude에 보내 **대주제 10\~20개** 를 받고, raw\_topic을 150개씩 다시 보내 "raw\_topic → 주제" 대응표를 받는다. 한 번에 다 받으면 출력이 너무 길어 잘릴 수 있어서 두 단계로 나눈다(Phase 4 결정). LLM 호출이 모두 끝난 뒤 한 트랜잭션으로 쓰므로 중간에 실패하면 아무것도 바뀌지 않는다.
-2. 내가 수정한 주제(`is_user_edited`)는 고정값으로 함께 보내 유지한다. 자동 주제는 지우고 새로 만든다.
+2. 내가 수정한 주제(`is_user_edited`)는 고정값으로 함께 보내 유지한다. 자동 주제는 지우고 새로 만든다. 내가 직접 주제를 바꾼 영상(`item_topics.is_user_set`)은 다시 배정하지 않는다(Phase 7).
 3. 새 항목은 전체 재정리 없이 기존 주제에 배정한다. 같은 raw\_topic의 항목이 이미 들어간 주제가 있으면 그대로 쓰고(LLM 안 부름), 아니면 임베딩이 가장 가까운 주제 후보 3개 → Claude가 선택(30개씩 묶어서). "어울리는 후보 없음"이면 가장 가까운 후보에 넣고 개수를 알려준다. 많으면 `--full`을 권한다. `reelbox organize --full`은 처음부터 다시 묶는다. 주제가 하나도 없으면 `--full`이 아니어도 전체 정리를 한다.
 4. organize는 index보다 먼저 돌므로, 새 항목의 임베딩이 없으면 그 자리에서 계산해 `embeddings`에 저장하고 index가 다시 쓴다.
 5. 소주제(parent\_id)는 아직 만들지 않는다(Phase 4 결정: 필요할 때 추가). 모델은 설정 `organize_model`(기본 Haiku, effort `medium`). 프롬프트는 `prompts/organize_v1.md`(대주제·대응표), `prompts/organize_assign_v1.md`(새 항목 배정).
@@ -181,7 +181,7 @@ Go가 더 익숙하더라도, 이 프로젝트는 AI·영상 도구 때문에 Py
 
 ## 6. 웹 UI (휴대폰 우선)
 
-화면은 폭 390px 휴대폰을 기준으로 설계하고, PC에서는 같은 화면이 여러 열로 넓어지게 한다. 하단 탭바 4개: **홈 · 검색 · 추가 · 설정**.
+화면은 폭 390px 휴대폰을 기준으로 설계하고, PC에서는 같은 화면이 여러 열로 넓어지게 한다. 하단 탭바 5개: **홈 · 검색 · 추가 · 즐겨찾기 · 설정** (즐겨찾기 탭은 Phase 7에 추가).
 
 | 화면 | 내용 |
 | --- | --- |
@@ -190,6 +190,7 @@ Go가 더 익숙하더라도, 이 프로젝트는 AI·영상 도구 때문에 Py
 | 주제 상세 | 그 주제의 영상 목록, 정렬(최근 저장순/오래된순), 주제 이름 수정·합치기 |
 | 영상 상세 | 큰 썸네일과 "인스타그램/유튜브에서 보기" 버튼, 요약, 핵심 포인트, 태그, 자막 전문(접기), 즐겨찾기·메모, 주제 바꾸기, ⋯ 메뉴의 숨기기·삭제 |
 | 추가 | 링크 붙여넣기 + 공유로 들어온 링크 확인. 처리 상태(대기 → 분석 중 → 완료) 표시 |
+| 즐겨찾기 | 별표한 영상 목록(최근 저장순, 숨김·삭제 제외). 카드 모양·길게 눌러 선택은 홈 최근 저장과 같음 |
 | 설정 | 파이프라인 현황(상태별 개수), 실패 목록과 다시 시도, 숨긴 항목, 휴지통(복원·비우기), 단축어 설치 안내 |
 
 ### 휴대폰에서 꼭 지킬 것
@@ -225,6 +226,17 @@ Go가 더 익숙하더라도, 이 프로젝트는 AI·영상 도구 때문에 Py
 - **추가 화면:** `GET /api/worker`(작업 중인 단계, 남은 개수, 쉬는 단계와 이유·재개 시각)를 맨 위에 보여주고, 처리 중인 항목이 있으면 5초마다 새로고침한다. 설정 화면에 단축어 만드는 법과 주소 복사 버튼을 둔다.
 - **화면 파일 캐시:** 화면 파일(HTML·JS·manifest·서비스 워커)은 `Cache-Control: no-cache`로 보내고, 서비스 워커도 `fetch(..., {cache: "no-cache"})`로 가져온다. 이렇게 하지 않으면 아이폰 Safari가 새 index.html과 옛 app.js를 섞어 써서 새 버튼이 눌리지 않았다.
 - **PC가 꺼져 있을 때 공유:** 단축어는 PC로 바로 보내므로 PC가 꺼져 있으면 실패 알림만 뜬다. 오프라인 대기열(6장 "보기 전용 사이트")과 어떻게 이을지는 Phase 8에서 정한다.
+
+### Phase 7 결정
+
+- **완료 기준:** 원래 "일주일 실제로 쓰면서 불편한 점 메모 → 수정"이었지만, 빨리 완성하려고 "Phase 7에서 만든 기능이 휴대폰에서 잘 되는지 확인"으로 바꿨다. 쓰면서 생기는 불편은 나중에 따로 고친다.
+- **고친 것은 고정:** 주제 이름을 바꾸거나, 다른 주제를 합쳐 남긴 주제, 영상을 옮겨 넣은 주제는 `is_user_edited=1`로 고정한다. 영상을 옮긴 연결은 `item_topics.is_user_set=1`이라 `organize --full`이 지우지도 다시 배정하지도 않는다. 옮겨 간 주제까지 고정하는 이유: 자동 주제가 지워지면 그 주제에 걸린 연결도 함께 지워지기(ON DELETE CASCADE) 때문이다.
+- **합치기:** 주제 상세의 ⋯ 메뉴 → 남길 주제 고르기 → 확인 창 한 번. 합친 주제는 지우고, 남은 주제 화면으로 간다. 이름이 같은 주제는 만들 수 없다(409).
+- **즐겨찾기·메모:** 영상 상세에서 바꾼다. 메모는 2,000자까지, 비우면 지운다. 검색 필터 시트에 "즐겨찾기만"을 추가했고 카드에 ★를 보여준다.
+- **즐겨찾기 탭:** 하단 탭바를 홈 · 검색 · 추가 · 즐겨찾기 · 설정 5칸으로 늘렸다. 즐겨찾기한 시각은 기록하지 않아서 정렬은 영상을 저장한 순(최근 먼저)이다.
+- **메모 검색:** `items_fts`에 `note` 칸을 추가했다. FTS5는 칸을 나중에 추가할 수 없어서 `005_note_search.sql`이 새 표를 만들고 기존 색인 + 메모를 복사해 바꿔치기한다(다시 색인 불필요). 메모를 저장하면 색인의 메모 칸도 바로 바뀌고, 색인 전 항목은 `index`가 메모를 함께 넣는다. 가중치는 제목·태그와 같은 3.0. 2글자 단어(LIKE)도 메모에서 찾는다. 메모는 키워드로만 찾고 의미 검색(임베딩)에는 넣지 않는다(메모를 고칠 때마다 임베딩을 다시 계산해야 해서).
+- **실패 다시 시도:** 시도 횟수를 0으로 되돌리고 `items.retry_requested=1`로 표시한다. 상태는 `failed` 그대로라 자막이 없으면 보강부터, 자막만 있으면 분석부터 다시 한다. 워커는 원래 공유 항목만 처리하지만, 다시 시도를 누른 항목은 내보내기로 들어왔어도 처리한다(직접 고른 몇 개라 인스타 한도·API 요금 부담이 작음). 인스타 요청 간격·일일 한도는 그대로 지킨다.
+- **API 추가:** `GET /api/topics`, `PATCH /api/topics/{id}`(`name`), `POST /api/topics/{id}/merge`(`into`), `PUT /api/items/{id}/topic`(`topic_id`), `PATCH /api/items/{id}`가 `hidden`·`favorite`·`note` 중 보낸 것만 바꿈, `GET /api/failed`, `POST /api/items/{id}/retry`, `POST /api/failed/retry`, `/api/search?favorite=true`, `/api/items?favorite=true`(즐겨찾기 탭).
 
 ### 보기 전용 사이트 (PC가 꺼져 있을 때)
 
@@ -312,7 +324,7 @@ reelbox/
 | Phase 4. 주제 + 검색 | organize, 임베딩, FTS5, 하이브리드 검색, `reelbox search` | 내가 쓴 검색어 5개에서 원하는 영상이 상위 5개 안에. 주제 수 10\~20개 |
 | Phase 5. 모바일 웹 | FastAPI JSON API + 정적 화면(data.js로 데이터 출처 분리), PWA, 원본 앱 열기, 숨기기·삭제·휴지통, 토큰 인증 | 휴대폰에서 Tailscale HTTPS 주소로 접속 → 홈 화면 추가 → 검색·원본 앱 열기·숨기기/삭제/복원 |
 | Phase 6. 공유로 추가 | `/api/items`, 워커, 아이폰 단축어 안내, 추가 화면 처리 상태 | 휴대폰에서 공유한 릴스가 몇 분 안에 분석돼서 목록에 뜨기 |
-| Phase 7. 다듬기 | 주제 수정·합치기, 즐겨찾기·메모, 실패 재시도 화면 | 일주일 실제로 쓰면서 불편한 점 메모 → 수정 |
+| Phase 7. 다듬기 | 주제 수정·합치기, 즐겨찾기·메모, 실패 재시도 화면 | 휴대폰에서 주제 이름 바꾸기·합치기, 영상 주제 바꾸기, 즐겨찾기·메모(즐겨찾기 탭, 검색 필터, 메모 검색 포함), 실패 항목 다시 시도가 잘 되는지 확인 (Phase 7 결정: "일주일 실제 사용"은 빨리 완성하기 위해 뺐다) |
 | Phase 8. 보기 전용 사이트 | reelbox publish, 스냅샷 JSON·썸네일, data.js의 PC/스냅샷 전환, MiniSearch, 오프라인 대기열, Cloudflare Pages + Access | 노트북을 끄고 휴대폰 데이터(LTE)로 열어도 주제·검색·원본 열기가 되고, 그때 공유한 링크가 노트북을 켜면 처리됨 |
 
 ## 9. 설계 리스크와 대응
@@ -502,6 +514,18 @@ DESIGN.md 3장 "그 외 입구"와 6장을 읽고 Phase 6을 진행해.
 - 아이폰용 단축어 만드는 법을 설정 화면에 안내 (공유 시트 → URL을
   토큰 헤더와 함께 POST)
 - 추가 화면에 처리 상태 표시
+```
+
+### Phase 7 — 다듬기
+
+```text
+DESIGN.md 4장과 6장을 읽고 Phase 7을 진행해. 먼저 계획을 보여줘.
+- 주제 상세: 주제 이름 바꾸기·다른 주제로 합치기 (고친 주제는 자동 정리가 덮어쓰지 않게)
+- 영상 상세: 즐겨찾기, 메모, 주제 바꾸기 (organize --full 뒤에도 유지)
+- 검색 필터에 즐겨찾기만 보기, 하단 탭바에 즐겨찾기 탭 (홈 · 검색 · 추가 · 즐겨찾기 · 설정)
+- 메모도 키워드 검색되게 (items_fts 에 note 칸)
+- 설정 > 실패한 항목: 항목별·전체 다시 시도 (워커가 처리)
+- 완료 기준: 위 기능이 휴대폰에서 잘 되는지 확인
 ```
 
 ### Phase 8 — 보기 전용 사이트

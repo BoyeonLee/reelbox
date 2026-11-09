@@ -4,7 +4,7 @@
 //
 // 돌려주는 항목(카드) 모양:
 //   { id, platform, url, title, author, summary, topic_id, topic, saved_at,
-//     duration_sec, thumb, media_type, status, error, hidden, deleted_at, purge_at }
+//     duration_sec, thumb, media_type, status, error, hidden, favorite, deleted_at, purge_at }
 
 (function () {
   "use strict";
@@ -61,13 +61,17 @@
     // 조회
     home: () => request("GET", "/api/home"),
     topic: (id) => request("GET", `/api/topics/${id}`),
-    // { topicId, sort: "recent"|"oldest", limit, offset } → { items, next_offset }
-    items: ({ topicId, sort, limit, offset } = {}) =>
-      request("GET", "/api/items" + query({ topic_id: topicId, sort, limit, offset })),
+    // { topicId, favorite, sort: "recent"|"oldest", limit, offset } → { items, next_offset }
+    items: ({ topicId, favorite, sort, limit, offset } = {}) =>
+      request("GET", "/api/items" + query({ topic_id: topicId, favorite: favorite ? "true" : "", sort, limit, offset })),
     item: (id) => request("GET", `/api/items/${id}`),
-    // { q, platform, topic, since, until, limit, offset } → { items, next_offset, semantic }
+    // { q, platform, topic, since, until, favorite, limit, offset } → { items, next_offset, semantic }
     search: (params) => request("GET", "/api/search" + query(params)),
     status: () => request("GET", "/api/status"),
+    // 실패한 항목 전체 → [{ id, platform, url, title, error, attempts, retry_requested, updated_at }]
+    failedItems: () => request("GET", "/api/failed"),
+    // 주제 고르기용 → [{ id, name, count, fixed }]
+    topics: () => request("GET", "/api/topics"),
     hiddenItems: () => request("GET", "/api/hidden"),
     trashItems: () => request("GET", "/api/trash"),
     recentAdds: () => request("GET", "/api/adds"),
@@ -81,6 +85,19 @@
     // action: "hide" | "unhide" | "delete" | "restore"
     bulk: (ids, action) => request("POST", "/api/items/bulk", { ids, action }),
     emptyTrash: () => request("POST", "/api/trash/empty"),
+
+    // 즐겨찾기·메모 (Phase 7). note 가 빈 글자면 메모를 지운다.
+    setFavorite: (id, favorite) => request("PATCH", `/api/items/${id}`, { favorite }),
+    setNote: (id, note) => request("PATCH", `/api/items/${id}`, { note }),
+
+    // 주제 고치기 (Phase 7). 이름 바꾸기·합치기는 남은 주제 { id, name, count } 를 돌려준다.
+    renameTopic: (id, name) => request("PATCH", `/api/topics/${id}`, { name }),
+    mergeTopic: (id, into) => request("POST", `/api/topics/${id}/merge`, { into }),
+    setItemTopic: (itemId, topicId) => request("PUT", `/api/items/${itemId}/topic`, { topic_id: topicId }),
+
+    // 실패 다시 시도 (Phase 7) → { ids }
+    retry: (id) => request("POST", `/api/items/${id}/retry`),
+    retryAll: () => request("POST", "/api/failed/retry"),
 
     // 추가 → { result, message, item }
     addUrl: (url) => request("POST", "/api/items", { url }),

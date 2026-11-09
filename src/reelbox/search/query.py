@@ -43,14 +43,16 @@ LIST_SIZE = 50  # 순위표마다 상위 몇 개까지 합칠지
 
 ListName = Literal["keyword", "short", "vector"]
 
-# 열 순서는 items_fts 정의와 같다: title, description, transcript, summary, tags.
-# 제목·태그에 걸리면 자막에 걸린 것보다 훨씬 중요하다.
+# 열 순서는 items_fts 정의와 같다: title, description, transcript, summary, tags, note.
+# 제목·태그에 걸리면 자막에 걸린 것보다 훨씬 중요하다. 메모(note)는 내가 직접 쓴 말이라
+# 제목·태그만큼 중요하게 본다 (Phase 7, 005_note_search.sql).
 COLUMN_WEIGHTS: dict[str, float] = {
     "title": 3.0,
     "description": 1.0,
     "transcript": 0.5,
     "summary": 2.0,
     "tags": 3.0,
+    "note": 3.0,
 }
 MIN_TRIGRAM_CHARS = 3
 

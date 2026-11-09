@@ -44,8 +44,10 @@ class FailedItem(BaseModel):
     id: int
     platform: str
     url: str
+    title: str | None
     error: str | None
     attempts: int
+    retry_requested: bool  # 화면에서 "다시 시도"를 눌러 처리를 기다리는 중
     updated_at: str
 
 
@@ -127,7 +129,7 @@ def status_counts(conn: sqlite3.Connection) -> dict[str, int]:
 def recent_failures(conn: sqlite3.Connection, limit: int = 5) -> list[FailedItem]:
     rows = conn.execute(
         """
-        SELECT id, platform, url, error, attempts, updated_at
+        SELECT id, platform, url, title, error, attempts, retry_requested, updated_at
         FROM items
         WHERE status = 'failed'
         ORDER BY updated_at DESC, id DESC
@@ -136,6 +138,34 @@ def recent_failures(conn: sqlite3.Connection, limit: int = 5) -> list[FailedItem
         (limit,),
     )
     return [FailedItem(**dict(row)) for row in rows]
+
+
+def retry_items(conn: sqlite3.Connection, ids: Sequence[int]) -> list[int]:
+    """실패한 항목을 다시 시도하게 한다. 바뀐 항목 id 를 돌려준다.
+
+    시도 횟수를 0 으로 되돌리고 retry_requested 를 켠다. status 는 failed 그대로 두면
+    자막이 없으면 보강, 자막만 있으면 분석 단계가 다시 집어 간다 (enrich/analyze_candidates).
+    retry_requested 가 켜진 항목은 내보내기로 들어왔어도 워커가 처리한다.
+    """
+    unique = list(dict.fromkeys(ids))
+    if not unique:
+        return []
+    marks = ", ".join("?" for _ in unique)
+    rows = conn.execute(
+        f"SELECT id FROM items WHERE id IN ({marks}) AND status = 'failed'", unique
+    ).fetchall()
+    targets = [r["id"] for r in rows]
+    with conn:
+        conn.executemany(
+            "UPDATE items SET attempts = 0, retry_requested = 1 WHERE id = ?",
+            [(i,) for i in targets],
+        )
+    order = {i: n for n, i in enumerate(unique)}
+    return sorted(targets, key=order.__getitem__)
+
+
+def failed_ids(conn: sqlite3.Connection) -> list[int]:
+    return [r["id"] for r in conn.execute("SELECT id FROM items WHERE status = 'failed'")]
 
 
 class AddOutcome(StrEnum):
@@ -250,7 +280,8 @@ def enrich_candidates(
     """보강할 차례인 항목. imported 먼저, 그다음 다시 시도할 failed.
 
     failed 는 다른 단계(analyze 등)에서도 쓰므로, 보강 결과(transcripts)가 없는 것만
-    보강 단계의 실패로 본다. source 를 주면 그 입구(imported_from)로 들어온 항목만.
+    보강 단계의 실패로 본다. source 를 주면 그 입구(imported_from)로 들어온 항목과
+    화면에서 다시 시도를 누른 항목(retry_requested)만.
     """
     rows = conn.execute(
         """
@@ -260,7 +291,7 @@ def enrich_candidates(
                OR (status = 'failed' AND attempts < :max_attempts
                    AND NOT EXISTS (SELECT 1 FROM transcripts AS t WHERE t.item_id = i.id)))
           AND (:platform IS NULL OR platform = :platform)
-          AND (:source IS NULL OR imported_from = :source)
+          AND (:source IS NULL OR imported_from = :source OR retry_requested = 1)
         ORDER BY status = 'failed', id
         LIMIT :limit
         """,
@@ -375,7 +406,7 @@ def analyze_candidates(
     """분석할 차례인 항목. enriched 먼저, 그다음 분석 단계에서 실패한 것.
 
     보강 결과(transcripts)는 있고 분석 결과(analyses)는 없는 failed 를 분석 단계 실패로 본다.
-    source 를 주면 그 입구(imported_from)로 들어온 항목만.
+    source 를 주면 그 입구(imported_from)로 들어온 항목과 다시 시도를 누른 항목만.
     """
     rows = conn.execute(
         """
@@ -386,7 +417,7 @@ def analyze_candidates(
         WHERE (i.status = 'enriched'
                OR (i.status = 'failed' AND i.attempts < :max_attempts
                    AND NOT EXISTS (SELECT 1 FROM analyses AS a WHERE a.item_id = i.id)))
-          AND (:source IS NULL OR i.imported_from = :source)
+          AND (:source IS NULL OR i.imported_from = :source OR i.retry_requested = 1)
         ORDER BY i.status = 'failed', i.id
         LIMIT :limit
         """,
@@ -546,10 +577,11 @@ def save_index(conn: sqlite3.Connection, item: EmbedInput) -> None:
     """FTS 에 넣고(있으면 바꾸고) indexed 로 바꾼다. 임베딩은 먼저 save_vectors 로 넣는다."""
     with conn:
         conn.execute("DELETE FROM items_fts WHERE rowid = ?", (item.id,))
+        note = conn.execute("SELECT note FROM user_meta WHERE item_id = ?", (item.id,)).fetchone()
         conn.execute(
             """
-            INSERT INTO items_fts (rowid, title, description, transcript, summary, tags)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO items_fts (rowid, title, description, transcript, summary, tags, note)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 item.id,
@@ -558,6 +590,7 @@ def save_index(conn: sqlite3.Connection, item: EmbedInput) -> None:
                 item.transcript_text or "",
                 item.summary_ko or "",
                 " ".join(item.tags),
+                (note["note"] if note else None) or "",
             ),
         )
         conn.execute("UPDATE items SET status = 'indexed', error = NULL WHERE id = ?", (item.id,))
@@ -703,12 +736,13 @@ def replace_topics(
 
     - 자동 주제(is_user_edited = 0)는 지우고 new_topics 를 새로 만든다.
     - 내가 고친 주제는 그대로 둔다.
-    - 모든 주제 연결을 지운 뒤 raw_to_topic 대로 다시 잇는다. 값이 int 면 기존(고정) 주제 id,
-      str 이면 new_topics 의 이름이다.
+    - 내가 직접 고른 연결(is_user_set)만 남기고 주제 연결을 지운 뒤, 나머지 항목을
+      raw_to_topic 대로 다시 잇는다. 값이 int 면 기존(고정) 주제 id, str 이면 new_topics 의 이름.
+      직접 고른 연결은 언제나 고정 주제를 가리킨다 (set_item_topic 이 주제도 고정한다).
     돌려주는 값: 주제 이름 → id (새로 만든 것과 고정 주제 모두).
     """
     with conn:
-        conn.execute("DELETE FROM item_topics")
+        conn.execute("DELETE FROM item_topics WHERE is_user_set = 0")
         conn.execute("DELETE FROM topics WHERE is_user_edited = 0")
         name_to_id = {t.name: t.id for t in list_topics(conn)}
         for t in new_topics:
@@ -725,6 +759,7 @@ def replace_topics(
             SELECT i.id, a.raw_topic
             FROM items AS i JOIN analyses AS a ON a.item_id = i.id
             WHERE i.status IN ('analyzed', 'indexed') AND {VISIBLE_SQL}
+              AND NOT EXISTS (SELECT 1 FROM item_topics AS u WHERE u.item_id = i.id)
             """
         ).fetchall()
         conn.executemany(
@@ -746,6 +781,85 @@ def assign_topics(conn: sqlite3.Connection, assignments: dict[int, int]) -> None
             )
 
 
+# --- 휴대폰에서 주제 고치기 (Phase 7) ---
+# 내가 손댄 주제는 is_user_edited = 1 로 고정해 organize --full 이 지우지 않게 한다.
+
+TOPIC_NAME_MAX = 40
+
+
+class TopicNameTakenError(ValueError):
+    """같은 이름의 주제가 이미 있다."""
+
+
+def _topic_exists(conn: sqlite3.Connection, topic_id: int) -> bool:
+    return conn.execute("SELECT 1 FROM topics WHERE id = ?", (topic_id,)).fetchone() is not None
+
+
+def rename_topic(conn: sqlite3.Connection, topic_id: int, name: str) -> bool:
+    """주제 이름을 바꾸고 고정한다. 주제가 없으면 False. 이름이 겹치면 TopicNameTakenError."""
+    name = name.strip()
+    if not _topic_exists(conn, topic_id):
+        return False
+    taken = conn.execute(
+        "SELECT 1 FROM topics WHERE name = ? AND id != ?", (name, topic_id)
+    ).fetchone()
+    if taken:
+        raise TopicNameTakenError(f"'{name}' 주제가 이미 있어요")
+    with conn:
+        conn.execute(
+            "UPDATE topics SET name = ?, is_user_edited = 1 WHERE id = ?", (name, topic_id)
+        )
+    return True
+
+
+def merge_topics(conn: sqlite3.Connection, source_id: int, target_id: int) -> bool:
+    """source 주제의 영상을 모두 target 으로 옮기고 source 를 지운다. target 은 고정한다.
+
+    둘 중 하나라도 없으면 False. 같은 주제끼리는 ValueError. 한 트랜잭션.
+    """
+    if source_id == target_id:
+        raise ValueError("같은 주제끼리는 합칠 수 없어요")
+    if not (_topic_exists(conn, source_id) and _topic_exists(conn, target_id)):
+        return False
+    with conn:
+        # 지금은 연결이 대표 주제 하나뿐이라 겹칠 일이 없지만, (item, topic) 기본 키가
+        # 겹치지 않게 target 쪽 같은 영상 연결을 먼저 지운다.
+        conn.execute(
+            """
+            DELETE FROM item_topics
+            WHERE topic_id = :target
+              AND item_id IN (SELECT item_id FROM item_topics WHERE topic_id = :source)
+            """,
+            {"source": source_id, "target": target_id},
+        )
+        conn.execute(
+            "UPDATE item_topics SET topic_id = ? WHERE topic_id = ?", (target_id, source_id)
+        )
+        conn.execute("DELETE FROM topics WHERE id = ?", (source_id,))
+        conn.execute("UPDATE topics SET is_user_edited = 1 WHERE id = ?", (target_id,))
+    return True
+
+
+def set_item_topic(conn: sqlite3.Connection, item_id: int, topic_id: int) -> bool:
+    """영상의 대표 주제를 직접 바꾼다. 연결은 is_user_set, 옮겨 간 주제는 고정한다.
+
+    주제를 고정하는 이유: organize --full 은 자동 주제를 지우는데, 그러면 주제에 걸린
+    연결도 같이 지워져(ON DELETE CASCADE) 내가 고른 것이 사라진다.
+    영상(영구 삭제 제외)이나 주제가 없으면 False.
+    """
+    if not _existing_ids(conn, [item_id]) or not _topic_exists(conn, topic_id):
+        return False
+    with conn:
+        conn.execute("DELETE FROM item_topics WHERE item_id = ? AND is_primary = 1", (item_id,))
+        conn.execute(
+            "INSERT OR REPLACE INTO item_topics (item_id, topic_id, is_primary, is_user_set)"
+            " VALUES (?, ?, 1, 1)",
+            (item_id, topic_id),
+        )
+        conn.execute("UPDATE topics SET is_user_edited = 1 WHERE id = ?", (topic_id,))
+    return True
+
+
 # --- 웹 화면: 목록·상세 ---
 
 # 목록에 보여줄 상태. 분석 전 항목은 제목·요약이 없어서 목록에는 넣지 않는다.
@@ -757,7 +871,8 @@ _SORT_KEY = "COALESCE(i.saved_at, i.created_at)"
 _CARD_COLUMNS = """
     i.id, i.platform, i.url, i.title, i.author, i.saved_at, i.created_at,
     i.duration_sec, i.thumbnail_path, i.media_type, i.status, i.error,
-    a.summary_ko, tp.id AS topic_id, tp.name AS topic, um.hidden_at, um.deleted_at
+    a.summary_ko, tp.id AS topic_id, tp.name AS topic, um.hidden_at, um.deleted_at,
+    COALESCE(um.favorite, 0) AS favorite
 """
 _CARD_FROM = """
     FROM items AS i
@@ -789,10 +904,12 @@ class ItemCard(BaseModel):
     error: str | None
     hidden_at: str | None
     deleted_at: str | None
+    favorite: bool
 
 
 class ItemDetail(ItemCard):
     description: str | None
+    note: str | None
     key_points: list[str]
     tags: list[str]
     transcript_source: str | None
@@ -809,16 +926,19 @@ def list_items(
     conn: sqlite3.Connection,
     *,
     topic_id: int | None = None,
+    favorite: bool = False,
     oldest_first: bool = False,
     limit: int = 30,
     offset: int = 0,
 ) -> list[ItemCard]:
-    """홈 최근 저장·주제 상세 목록. 숨김·삭제 항목은 뺀다."""
+    """홈 최근 저장·주제 상세·즐겨찾기 목록. 숨김·삭제 항목은 뺀다."""
     where = _listable_where()
     params: dict[str, object] = {"limit": limit, "offset": offset}
     if topic_id is not None:
         where += " AND tp.id = :topic_id"
         params["topic_id"] = topic_id
+    if favorite:
+        where += " AND um.favorite = 1"
     order = "ASC" if oldest_first else "DESC"
     rows = conn.execute(
         _CARD_SQL
@@ -846,7 +966,7 @@ def get_item_detail(conn: sqlite3.Connection, item_id: int) -> ItemDetail | None
     """상세 화면. 숨김·휴지통 항목도 보여준다 (되돌리기용). 영구 삭제된 항목은 None."""
     row = conn.execute(
         f"""
-        SELECT {_CARD_COLUMNS}, i.description, a.key_points, a.tags,
+        SELECT {_CARD_COLUMNS}, i.description, um.note, a.key_points, a.tags,
                tr.source AS transcript_source, tr.text AS transcript_text
         {_CARD_FROM}
         LEFT JOIN transcripts AS tr ON tr.item_id = i.id
@@ -948,12 +1068,13 @@ def count_unfinished(conn: sqlite3.Connection, source: str, *, max_attempts: int
     """source 로 들어와 아직 처리가 끝나지 않은 항목 수 (워커가 할 일이 남았는지).
 
     imported·enriched·analyzed 와, 다시 시도할 수 있는 failed. 휴지통 항목은 뺀다.
+    화면에서 다시 시도를 누른 항목(retry_requested)은 출처와 상관없이 센다.
     """
     return conn.execute(
         """
         SELECT COUNT(*) FROM items AS i
         LEFT JOIN user_meta AS um ON um.item_id = i.id
-        WHERE i.imported_from = ? AND um.deleted_at IS NULL
+        WHERE (i.imported_from = ? OR i.retry_requested = 1) AND um.deleted_at IS NULL
           AND (i.status IN ('imported', 'enriched', 'analyzed')
                OR (i.status = 'failed' AND i.attempts < ?))
         """,
@@ -996,11 +1117,19 @@ def _existing_ids(conn: sqlite3.Connection, ids: Sequence[int]) -> list[int]:
     return [i for i in unique if i in found]
 
 
-def _set_meta_time(
-    conn: sqlite3.Connection, ids: Sequence[int], column: str, value: str | None
+_META_COLUMNS = ("hidden_at", "deleted_at", "favorite", "note")
+
+
+def item_exists(conn: sqlite3.Connection, item_id: int) -> bool:
+    """영구 삭제되지 않은 항목인지."""
+    return bool(_existing_ids(conn, [item_id]))
+
+
+def _set_meta(
+    conn: sqlite3.Connection, ids: Sequence[int], column: str, value: str | int | None
 ) -> list[int]:
-    """user_meta 의 hidden_at 또는 deleted_at 을 바꾼다. 바꾼 항목 id 를 돌려준다."""
-    assert column in ("hidden_at", "deleted_at")
+    """user_meta 의 열 하나를 바꾼다 (행이 없으면 만든다). 바꾼 항목 id 를 돌려준다."""
+    assert column in _META_COLUMNS  # 열 이름은 SQL 에 바로 들어가므로 정해진 것만
     targets = _existing_ids(conn, ids)
     with conn:
         for item_id in targets:
@@ -1017,17 +1146,41 @@ def _set_meta_time(
 def set_hidden(
     conn: sqlite3.Connection, ids: Sequence[int], hidden: bool, *, now: datetime
 ) -> list[int]:
-    return _set_meta_time(conn, ids, "hidden_at", to_iso(now) if hidden else None)
+    return _set_meta(conn, ids, "hidden_at", to_iso(now) if hidden else None)
 
 
 def trash_items(conn: sqlite3.Connection, ids: Sequence[int], *, now: datetime) -> list[int]:
     """휴지통으로. 30일 안에는 restore_items 로 되돌릴 수 있다."""
-    return _set_meta_time(conn, ids, "deleted_at", to_iso(now))
+    return _set_meta(conn, ids, "deleted_at", to_iso(now))
 
 
 def restore_items(conn: sqlite3.Connection, ids: Sequence[int]) -> list[int]:
     """휴지통에서 꺼낸다. 숨김 표시는 그대로 둔다."""
-    return _set_meta_time(conn, ids, "deleted_at", None)
+    return _set_meta(conn, ids, "deleted_at", None)
+
+
+NOTE_MAX = 2000
+
+
+def set_favorite(conn: sqlite3.Connection, ids: Sequence[int], favorite: bool) -> list[int]:
+    return _set_meta(conn, ids, "favorite", int(favorite))
+
+
+def set_note(conn: sqlite3.Connection, ids: Sequence[int], note: str | None) -> list[int]:
+    """메모를 저장한다. 앞뒤 공백을 지우고, 비어 있으면 NULL (메모 없음).
+
+    검색 색인(items_fts)에 이미 있는 항목이면 메모 칸도 바로 고쳐서 메모로 검색되게 한다.
+    아직 색인 전이면 나중에 save_index 가 메모를 함께 넣는다.
+    """
+    text = (note or "").strip()
+    if len(text) > NOTE_MAX:
+        raise ValueError(f"메모는 {NOTE_MAX}자까지 쓸 수 있어요")
+    changed = _set_meta(conn, ids, "note", text or None)
+    with conn:
+        conn.executemany(
+            "UPDATE items_fts SET note = ? WHERE rowid = ?", [(text, i) for i in changed]
+        )
+    return changed
 
 
 class PurgedItem(BaseModel):

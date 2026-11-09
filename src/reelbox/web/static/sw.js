@@ -2,7 +2,7 @@
 // - 화면 파일(HTML·JS·아이콘): 네트워크 먼저, 안 되면 저장해 둔 것 → 고친 화면이 바로 반영된다
 // - CDN(Tailwind·Alpine·글꼴): 저장해 둔 것 먼저 → 빠르게 뜬다
 // - /api, /thumbs: 손대지 않는다 (항상 PC 에서 최신 데이터. 오프라인 대기열은 Phase 8)
-const VERSION = "reelbox-v2"; // 올리면 옛 캐시를 지운다
+const VERSION = "reelbox-v4"; // 올리면 옛 캐시를 지운다
 const SHELL = ["/", "/index.html", "/app.js", "/data.js", "/manifest.json", "/icons/icon-192.png"];
 const CDN_HOSTS = ["cdn.tailwindcss.com", "cdn.jsdelivr.net", "fonts.googleapis.com", "fonts.gstatic.com"];
 

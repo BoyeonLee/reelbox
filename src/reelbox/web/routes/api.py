@@ -70,6 +70,7 @@ class Card(BaseModel):
     status: str
     error: str | None
     hidden: bool
+    favorite: bool
     deleted_at: str | None
     purge_at: str | None  # 휴지통 항목이 영구 정리되는 시각
 
@@ -95,6 +96,7 @@ class Card(BaseModel):
             status=c.status,
             error=c.error,
             hidden=c.hidden_at is not None,
+            favorite=c.favorite,
             deleted_at=c.deleted_at,
             purge_at=purge_at,
         )
@@ -102,6 +104,7 @@ class Card(BaseModel):
 
 class Detail(Card):
     description: str | None
+    note: str | None
     key_points: list[str]
     tags: list[str]
     transcript_source: str | None
@@ -182,12 +185,19 @@ def topic(conn: Conn, topic_id: int) -> TopicOut:
 def items(
     conn: Conn,
     topic_id: int | None = None,
+    favorite: bool = False,
     sort: Literal["recent", "oldest"] = "recent",
     limit: Limit = 30,
     offset: Offset = 0,
 ) -> ItemPage:
+    """홈 최근 저장·주제 상세·즐겨찾기 탭(favorite=true) 목록."""
     cards = db.list_items(
-        conn, topic_id=topic_id, oldest_first=sort == "oldest", limit=limit, offset=offset
+        conn,
+        topic_id=topic_id,
+        favorite=favorite,
+        oldest_first=sort == "oldest",
+        limit=limit,
+        offset=offset,
     )
     return _page(cards, limit, offset)
 
@@ -200,6 +210,7 @@ def item(conn: Conn, item_id: int) -> Detail:
     return Detail(
         **Card.of(d).model_dump(),
         description=d.description,
+        note=d.note,
         key_points=d.key_points,
         tags=d.tags,
         transcript_source=d.transcript_source,
@@ -217,11 +228,14 @@ def search(
     topic: str | None = None,
     since: date | None = None,
     until: date | None = None,
+    favorite: bool = False,
     limit: Limit = 20,
     offset: Offset = 0,
 ) -> SearchOut:
     embedder = request.app.state.embedder.get()
-    filters = searcher.SearchFilters(platform=platform, topic=topic, since=since, until=until)
+    filters = searcher.SearchFilters(
+        platform=platform, topic=topic, since=since, until=until, favorite=favorite
+    )
     hits = searcher.search(conn, q, embedder=embedder, filters=filters, limit=limit, offset=offset)
     page = _page(db.cards_by_ids(conn, [h.id for h in hits]), limit, offset)
     return SearchOut(**page.model_dump(), semantic=embedder is not None)
@@ -250,11 +264,13 @@ def trash(conn: Conn) -> list[Card]:
     return [Card.of(c) for c in db.list_trash(conn)]
 
 
-# --- 숨기기·삭제·복원 ---
+@router.get("/failed")
+def failed(conn: Conn) -> list[db.FailedItem]:
+    """실패한 항목 전체 (최근 순). 설정 > 실패한 항목 화면."""
+    return db.recent_failures(conn, limit=500)
 
 
-class HiddenPatch(BaseModel):
-    hidden: bool
+# --- 주제 고치기 (Phase 7) ---
 
 
 class Changed(BaseModel):
@@ -267,9 +283,114 @@ def _one(changed: list[int]) -> Changed:
     return Changed(ids=changed)
 
 
+class TopicBrief(BaseModel):
+    id: int
+    name: str
+    count: int
+    fixed: bool  # 내가 고친 주제 (자동 정리가 덮어쓰지 않음)
+
+
+@router.get("/topics")
+def topics(conn: Conn) -> list[TopicBrief]:
+    """주제 고르기 시트(주제 바꾸기·합치기)용. 영상이 0개인 주제도 넣는다."""
+    return [
+        TopicBrief(id=t.id, name=t.name, count=t.items, fixed=t.is_user_edited)
+        for t in db.topic_counts(conn)
+    ]
+
+
+class TopicPatch(BaseModel):
+    name: str = Field(min_length=1, max_length=db.TOPIC_NAME_MAX)
+
+    @field_validator("name")
+    @classmethod
+    def _strip(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("주제 이름을 적어 주세요")
+        return value
+
+
+def _topic_out(conn: sqlite3.Connection, topic_id: int) -> TopicOut:
+    t = db.get_topic(conn, topic_id)
+    if t is None:
+        raise HTTPException(404, "주제를 찾을 수 없습니다")
+    return TopicOut(id=t.id, name=t.name, description=t.description, count=t.items, thumbs=[])
+
+
+@router.patch("/topics/{topic_id}")
+def rename_topic(conn: Conn, topic_id: int, body: TopicPatch) -> TopicOut:
+    try:
+        found = db.rename_topic(conn, topic_id, body.name)
+    except db.TopicNameTakenError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    if not found:
+        raise HTTPException(404, "주제를 찾을 수 없습니다")
+    return _topic_out(conn, topic_id)
+
+
+class MergeIn(BaseModel):
+    into: int  # 합쳐서 남길 주제
+
+
+@router.post("/topics/{topic_id}/merge")
+def merge_topic(conn: Conn, topic_id: int, body: MergeIn) -> TopicOut:
+    """topic_id 주제를 into 주제로 합친다. 돌려주는 것은 남은(into) 주제."""
+    try:
+        found = db.merge_topics(conn, topic_id, body.into)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    if not found:
+        raise HTTPException(404, "주제를 찾을 수 없습니다")
+    return _topic_out(conn, body.into)
+
+
+class ItemTopicIn(BaseModel):
+    topic_id: int
+
+
+@router.put("/items/{item_id}/topic")
+def set_item_topic(conn: Conn, item_id: int, body: ItemTopicIn) -> Changed:
+    if not db.set_item_topic(conn, item_id, body.topic_id):
+        raise HTTPException(404, "영상이나 주제를 찾을 수 없습니다")
+    return Changed(ids=[item_id])
+
+
+# --- 숨기기·삭제·복원, 즐겨찾기·메모 ---
+
+
+class ItemPatch(BaseModel):
+    """바꿀 것만 보낸다. 예: {"favorite": true}, {"note": "..."}, {"hidden": false}."""
+
+    hidden: bool | None = None
+    favorite: bool | None = None
+    note: str | None = Field(default=None, max_length=db.NOTE_MAX)
+
+    @model_validator(mode="after")
+    def _something(self) -> "ItemPatch":
+        # model_fields_set: JSON 에 실제로 들어 있던 필드 이름들. {"note": null}(메모 지우기)과
+        # 아예 안 보낸 것을 구별하려고 쓴다.
+        if not self.model_fields_set:
+            raise ValueError("바꿀 값(hidden, favorite, note)을 하나 이상 보내 주세요")
+        if "hidden" in self.model_fields_set and self.hidden is None:
+            raise ValueError("hidden 은 true 나 false 여야 해요")
+        if "favorite" in self.model_fields_set and self.favorite is None:
+            raise ValueError("favorite 는 true 나 false 여야 해요")
+        return self
+
+
 @router.patch("/items/{item_id}")
-def patch_item(request: Request, conn: Conn, item_id: int, body: HiddenPatch) -> Changed:
-    return _one(db.set_hidden(conn, [item_id], body.hidden, now=_now(request)))
+def patch_item(request: Request, conn: Conn, item_id: int, body: ItemPatch) -> Changed:
+    if not db.item_exists(conn, item_id):
+        raise HTTPException(404, "영상을 찾을 수 없습니다")
+    fields = body.model_fields_set
+    if body.hidden is not None:
+        db.set_hidden(conn, [item_id], body.hidden, now=_now(request))
+    if body.favorite is not None:
+        db.set_favorite(conn, [item_id], body.favorite)
+    if "note" in fields:
+        db.set_note(conn, [item_id], body.note)
+    return Changed(ids=[item_id])
 
 
 @router.delete("/items/{item_id}")
@@ -300,6 +421,31 @@ def bulk(request: Request, conn: Conn, body: BulkIn) -> Changed:
         case "restore":
             changed = db.restore_items(conn, body.ids)
     return Changed(ids=changed)
+
+
+# --- 실패 다시 시도 (Phase 7) ---
+
+
+def _retried(request: Request, ids: list[int]) -> Changed:
+    worker = _worker(request)
+    if worker is not None and ids:
+        worker.notify()
+    return Changed(ids=ids)
+
+
+@router.post("/items/{item_id}/retry")
+def retry_item(request: Request, conn: Conn, item_id: int) -> Changed:
+    """실패한 영상 하나를 다시 시도한다. 실패 상태가 아니면 404."""
+    changed = db.retry_items(conn, [item_id])
+    if not changed:
+        raise HTTPException(404, "다시 시도할 실패 항목이 아니에요")
+    return _retried(request, changed)
+
+
+@router.post("/failed/retry")
+def retry_all(request: Request, conn: Conn) -> Changed:
+    """실패한 항목 전부를 다시 시도한다."""
+    return _retried(request, db.retry_items(conn, db.failed_ids(conn)))
 
 
 @router.post("/trash/empty")

@@ -1,6 +1,6 @@
 // Reelbox 화면 로직 (Alpine.js). 데이터는 반드시 ReelboxData(data.js)로만 읽고 쓴다.
-// 주소는 해시 라우팅: #/ · #/search?q= · #/topic/3 · #/item/5 · #/add · #/settings
-//                    #/hidden · #/trash · #/failed
+// 주소는 해시 라우팅: #/ · #/search?q= · #/topic/3 · #/item/5 · #/add · #/favorites
+//                    #/settings · #/hidden · #/trash · #/failed
 
 (function () {
   "use strict";
@@ -48,6 +48,18 @@
       menuOpen: false,
       confirmEmpty: false,
 
+      // Phase 7: 주제 고치기·즐겨찾기·메모·실패 다시 시도
+      allTopics: [], // 주제 고르기 시트용 { id, name, count, fixed }
+      topicSheet: null, // null | "move"(영상 주제 바꾸기) | "merge"(이 주제를 다른 주제로 합치기)
+      renameOpen: false,
+      renameInput: "",
+      renameError: "",
+      mergeInto: null, // 합치기 확인 창에 띄울 대상 주제
+      noteDraft: "",
+      noteSaving: false,
+      failures: [],
+      retrying: false,
+
       // 여러 개 선택 (카드를 길게 눌러 시작)
       selecting: false,
       selected: [],
@@ -61,6 +73,9 @@
       topicItems: [],
       topicSort: "recent",
       topicNext: null,
+      favorites: [],
+      favoritesNext: null,
+      favoritesLoaded: false,
       detail: null,
       transcriptOpen: false,
       hidden: [],
@@ -83,8 +98,8 @@
       semantic: false,
       searched: false,
       filterOpen: false,
-      filters: { platform: "", topic: "", period: "" },
-      draft: { platform: "", topic: "", period: "" },
+      filters: { platform: "", topic: "", period: "", favorite: "" },
+      draft: { platform: "", topic: "", period: "", favorite: "" },
       topicsForFilter: [],
 
       PERIODS,
@@ -107,6 +122,9 @@
         this.cancelSelect();
         this.menuOpen = false;
         this.filterOpen = false;
+        this.topicSheet = null;
+        this.renameOpen = false;
+        this.mergeInto = null;
         this.error = "";
         window.scrollTo(0, 0);
         const r = this.route;
@@ -117,8 +135,9 @@
             case "topic": await this.loadTopic(r.id); break;
             case "item": await this.loadDetail(r.id); break;
             case "add": await this.loadAdds(); break;
-            case "settings":
-            case "failed": await this.loadStatus(); break;
+            case "favorites": await this.loadFavorites(); break;
+            case "settings": await this.loadStatus(); break;
+            case "failed": this.failures = await D.failedItems(); break;
             case "hidden": this.hidden = await D.hiddenItems(); break;
             case "trash": this.trash = await D.trashItems(); break;
           }
@@ -188,6 +207,14 @@
         this.topicNext = page.next_offset;
       },
 
+      async loadFavorites() {
+        this.favoritesLoaded = false;
+        const page = await D.items({ favorite: true, limit: PAGE });
+        this.favorites = page.items;
+        this.favoritesNext = page.next_offset;
+        this.favoritesLoaded = true;
+      },
+
       async changeSort(sort) {
         this.topicSort = sort;
         await this.loadTopic(this.route.id).catch((e) => this.handleError(e));
@@ -197,6 +224,7 @@
         this.detail = null;
         this.transcriptOpen = false;
         this.detail = await D.item(id);
+        this.noteDraft = this.detail.note || "";
       },
 
       async loadStatus() {
@@ -281,6 +309,7 @@
           platform: p.get("platform") || "",
           topic: p.get("topic") || "",
           period: p.get("period") || "",
+          favorite: p.get("favorite") || "",
         };
         if (!this.topicsForFilter.length) {
           D.home().then((h) => (this.topicsForFilter = h.topics)).catch(() => {});
@@ -299,6 +328,7 @@
           platform: f.platform,
           topic: f.topic,
           since: f.period ? daysAgoDate(Number(f.period)) : "",
+          favorite: f.favorite ? "true" : "",
           limit: PAGE,
           offset,
         };
@@ -338,7 +368,7 @@
 
       clearFilter(key) {
         if (key) this.filters[key] = "";
-        else this.filters = { platform: "", topic: "", period: "" };
+        else this.filters = { platform: "", topic: "", period: "", favorite: "" };
         this.submitSearch();
       },
 
@@ -351,17 +381,25 @@
           chips.push({ key: "topic", label: t ? t.name : "주제" });
         }
         if (f.period) chips.push({ key: "period", label: PERIODS.find((p) => p.key === f.period).label });
+        if (f.favorite) chips.push({ key: "favorite", label: "즐겨찾기" });
         return chips;
       },
 
       async loadMore() {
         const n = this.route.name;
         const hasMore =
-          (n === "search" && this.resultsNext !== null) || (n === "topic" && this.topicNext !== null);
+          (n === "search" && this.resultsNext !== null) ||
+          (n === "topic" && this.topicNext !== null) ||
+          (n === "favorites" && this.favoritesNext !== null);
         if (this.loading || !hasMore) return;
         try {
           if (n === "search") {
             await this.fetchResults(this.resultsNext);
+          } else if (n === "favorites") {
+            this.loading = true;
+            const page = await D.items({ favorite: true, limit: PAGE, offset: this.favoritesNext });
+            this.favorites = this.favorites.concat(page.items);
+            this.favoritesNext = page.next_offset;
           } else {
             this.loading = true;
             const page = await D.items({ topicId: this.route.id, sort: this.topicSort, limit: PAGE, offset: this.topicNext });
@@ -425,6 +463,7 @@
         switch (this.route.name) {
           case "home": return this.home ? this.home.recent : [];
           case "search": return this.results;
+          case "favorites": return this.favorites;
           case "topic": return this.topicItems;
           case "hidden": return this.hidden;
           case "trash": return this.trash;
@@ -493,6 +532,7 @@
         if (this.home) this.home.recent = drop(this.home.recent);
         this.results = drop(this.results);
         this.topicItems = drop(this.topicItems);
+        this.favorites = drop(this.favorites);
         if (action === "unhide" || action === "delete") this.hidden = drop(this.hidden);
         if (action === "restore" || action === "delete") this.trash = drop(this.trash);
         if (this.route.name === "item") this.loadDetail(this.route.id).catch((e) => this.handleError(e));
@@ -507,6 +547,142 @@
           this.showToast(`${res.ids.length}개를 영구 삭제했어요`, null);
         } catch (e) {
           this.handleError(e);
+        }
+      },
+
+      // --- 즐겨찾기·메모 (영상 상세) ---
+      async toggleFavorite() {
+        const d = this.detail;
+        if (!d) return;
+        const next = !d.favorite;
+        d.favorite = next; // 먼저 화면에 반영하고, 실패하면 되돌린다
+        try {
+          await D.setFavorite(d.id, next);
+          this.showToast(next ? "즐겨찾기에 넣었어요" : "즐겨찾기에서 뺐어요", null);
+        } catch (e) {
+          d.favorite = !next;
+          this.handleError(e);
+        }
+      },
+
+      noteChanged() {
+        return this.detail && this.noteDraft.trim() !== (this.detail.note || "");
+      },
+
+      async saveNote() {
+        const d = this.detail;
+        if (!d || this.noteSaving || !this.noteChanged()) return;
+        this.noteSaving = true;
+        try {
+          await D.setNote(d.id, this.noteDraft);
+          d.note = this.noteDraft.trim() || null;
+          this.noteDraft = d.note || "";
+          this.showToast(d.note ? "메모를 저장했어요" : "메모를 지웠어요", null);
+        } catch (e) {
+          this.handleError(e);
+        } finally {
+          this.noteSaving = false;
+        }
+      },
+
+      // --- 주제 고르기 시트 (영상 주제 바꾸기 · 주제 합치기) ---
+      async openTopicSheet(mode) {
+        this.menuOpen = false;
+        try {
+          this.allTopics = await D.topics();
+          this.topicSheet = mode;
+        } catch (e) {
+          this.handleError(e);
+        }
+      },
+
+      // 시트에 보여줄 주제: 지금 주제는 뺀다
+      sheetTopics() {
+        const current = this.topicSheet === "move" ? this.detail && this.detail.topic_id : this.topic && this.topic.id;
+        return this.allTopics.filter((t) => t.id !== current);
+      },
+
+      async pickTopic(t) {
+        if (this.topicSheet === "merge") {
+          this.topicSheet = null;
+          this.mergeInto = t; // 확인 창을 한 번 띄운다
+          return;
+        }
+        const d = this.detail;
+        this.topicSheet = null;
+        try {
+          await D.setItemTopic(d.id, t.id);
+          d.topic_id = t.id;
+          d.topic = t.name;
+          this.showToast(`'${t.name}' 주제로 옮겼어요`, null);
+        } catch (e) {
+          this.handleError(e);
+        }
+      },
+
+      // --- 주제 이름 바꾸기·합치기 (주제 상세) ---
+      openRename() {
+        this.menuOpen = false;
+        this.renameInput = this.topic ? this.topic.name : "";
+        this.renameError = "";
+        this.renameOpen = true;
+      },
+
+      async saveRename() {
+        const name = this.renameInput.trim();
+        if (!name) {
+          this.renameError = "주제 이름을 적어 주세요";
+          return;
+        }
+        try {
+          const t = await D.renameTopic(this.topic.id, name);
+          this.topic.name = t.name;
+          this.renameOpen = false;
+          this.showToast("주제 이름을 바꿨어요", null);
+        } catch (e) {
+          if (e instanceof D.AuthError) return this.handleError(e);
+          this.renameError = e.message;
+        }
+      },
+
+      async doMerge() {
+        const into = this.mergeInto;
+        this.mergeInto = null;
+        if (!into || !this.topic) return;
+        try {
+          const t = await D.mergeTopic(this.topic.id, into.id);
+          this.showToast(`'${t.name}' 주제로 합쳤어요`, null);
+          // 합친 주제는 없어졌으니 남은 주제 화면으로 (뒤로 가기로 사라진 주제에 오지 않게 replace)
+          history.replaceState(null, "", `#/topic/${t.id}`);
+          await this.go();
+        } catch (e) {
+          this.handleError(e);
+        }
+      },
+
+      // --- 실패한 항목 다시 시도 ---
+      async retryOne(f) {
+        try {
+          await D.retry(f.id);
+          f.retry_requested = true;
+          f.attempts = 0;
+          this.showToast("다시 시도할게요. PC가 곧 처리해요", null);
+        } catch (e) {
+          this.handleError(e);
+        }
+      },
+
+      async retryAll() {
+        if (this.retrying) return;
+        this.retrying = true;
+        try {
+          const res = await D.retryAll();
+          this.failures = await D.failedItems();
+          this.showToast(`${res.ids.length}개를 다시 시도할게요`, null);
+        } catch (e) {
+          this.handleError(e);
+        } finally {
+          this.retrying = false;
         }
       },
 
