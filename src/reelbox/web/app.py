@@ -20,12 +20,14 @@ from typing import Any
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from reelbox import db
+from reelbox import publish as publisher
 from reelbox.config import Settings
 from reelbox.purge import purge
 from reelbox.search.embed import Embedder
@@ -91,6 +93,33 @@ async def _purge_daily(settings: Settings) -> None:
         await asyncio.sleep(PURGE_INTERVAL_SEC)
 
 
+def _publish_once(settings: Settings) -> None:
+    conn = db.connect(settings.db_path)
+    try:
+        report = publisher.publish(conn, settings, now=datetime.now(UTC))
+        logger.info("자동 publish: %s", report.result)
+    finally:
+        conn.close()
+
+
+async def _publish_daily(settings: Settings) -> None:
+    """서버가 켜져 있는 동안 켜질 때 한 번 + 하루 한 번 보기 전용 사이트를 새로 (DESIGN.md 6장).
+
+    바뀐 게 없으면 publish 가 알아서 올리지 않는다. 실패해도 서버는 계속 돈다.
+    """
+    while True:
+        try:
+            await asyncio.to_thread(_publish_once, settings)
+        except (publisher.PublishError, sqlite3.Error, OSError) as exc:
+            logger.warning("자동 publish 실패: %s", exc)
+        await asyncio.sleep(settings.publish_interval_sec)
+
+
+def pages_origin(settings: Settings) -> str | None:
+    """CORS 에 허용할 Pages 주소 (끝의 / 는 뺀다. 브라우저가 보내는 Origin 에는 / 가 없다)."""
+    return settings.pages_url.rstrip("/") if settings.pages_url else None
+
+
 class ShellFiles(StaticFiles):
     """화면 파일(HTML·JS·manifest·서비스 워커). 매번 바뀌었는지 서버에 물어보게 한다.
 
@@ -114,6 +143,7 @@ def create_app(
     *,
     embedder_factory: Callable[[], Embedder] | None = None,
     auto_purge: bool = True,
+    auto_publish: bool = True,
     now: Callable[[], datetime] = lambda: datetime.now(UTC),
     make_worker: Callable[[EmbedderGetter], Worker] | None = None,
 ) -> FastAPI:
@@ -134,14 +164,30 @@ def create_app(
         holder.start()
         if worker is not None:
             worker.start()
-        task = asyncio.create_task(_purge_daily(settings)) if auto_purge else None
+        tasks = []
+        if auto_purge:
+            tasks.append(asyncio.create_task(_purge_daily(settings)))
+        if auto_publish and publisher.pages_configured(settings):
+            tasks.append(asyncio.create_task(_publish_daily(settings)))
         yield
-        if task is not None:
+        for task in tasks:
             task.cancel()
         if worker is not None:
             worker.stop()
 
     app = FastAPI(title="Reelbox", lifespan=lifespan, docs_url=None, redoc_url=None)
+    origin = pages_origin(settings)
+    if origin:
+        # 보기 전용 사이트(Pages)에 설치한 앱이 PC API 를 부를 수 있게 그 주소 하나만 허용한다.
+        # 토큰은 쿠키가 아니라 Authorization 헤더로 오므로 allow_credentials 는 필요 없다
+        # (아이폰 Safari 는 다른 사이트에서 보낸 요청에 쿠키를 붙여 주지 않는다).
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=[origin],
+            allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
+            allow_headers=["Authorization", "Content-Type"],
+            max_age=600,
+        )
     app.state.settings = settings
     app.state.embedder = holder
     app.state.worker = worker

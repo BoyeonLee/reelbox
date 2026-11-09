@@ -87,6 +87,29 @@ class Settings(BaseSettings):
     # 바로 다시 두드리면 같은 항목의 시도 횟수(max_attempts)만 써 버리기 때문.
     worker_backoff_sec: float = Field(default=30 * 60.0, ge=0)
 
+    # 보기 전용 사이트 (Phase 8, DESIGN.md 6장).
+    # pages_project·pages_url 이 비어 있으면 publish 는 dist 만 만들고 배포는 안 한다.
+    pages_project: str | None = None  # Cloudflare Pages 프로젝트 이름 (예: reelbox)
+    pages_url: str | None = (
+        None  # 휴대폰에 설치할 주소 (예: https://reelbox.pages.dev). CORS 허용 대상
+    )
+    pc_url: str | None = (
+        None  # 스냅샷 화면이 먼저 두드려 볼 PC 주소 (https://<컴퓨터>.<tailnet>.ts.net)
+    )
+    pages_branch: str = (
+        "main"  # Pages 프로젝트의 운영(production) 브랜치. 다르면 미리보기 주소로만 올라간다
+    )
+    wrangler_package: str = "wrangler@4"  # npx 로 실행할 wrangler 버전
+    # wrangler 가 쓰는 Cloudflare 값. 관례대로 접두사 없이 읽어, 배포할 때 환경변수로 넘긴다.
+    cloudflare_api_token: SecretStr | None = Field(
+        default=None, validation_alias=AliasChoices("CLOUDFLARE_API_TOKEN", "cloudflare_api_token")
+    )
+    cloudflare_account_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("CLOUDFLARE_ACCOUNT_ID", "cloudflare_account_id"),
+    )
+    publish_interval_sec: float = Field(default=24 * 60 * 60.0, gt=0)  # serve 의 자동 publish 간격
+
     @model_validator(mode="after")
     def _check_delay(self) -> Self:
         if self.instagram_delay_max_sec < self.instagram_delay_min_sec:
@@ -104,6 +127,14 @@ class Settings(BaseSettings):
     @property
     def thumbs_dir(self) -> Path:
         return self.data_dir / "thumbs"
+
+    @property
+    def dist_dir(self) -> Path:
+        return self.data_dir / "dist"
+
+    @property
+    def publish_state_path(self) -> Path:
+        return self.data_dir / "publish_state.json"
 
 
 def get_settings() -> Settings:

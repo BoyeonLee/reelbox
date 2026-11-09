@@ -102,11 +102,20 @@
       draft: { platform: "", topic: "", period: "", favorite: "" },
       topicsForFilter: [],
 
+      // 연결 상태 (Phase 8): mode "pc" | "snapshot", 스냅샷 시각, 대기열 개수
+      conn: { mode: "pc", site: false, generatedAt: null, queued: 0 },
+
       PERIODS,
 
       init() {
+        D.subscribe((s) => (this.conn = s));
         window.addEventListener("hashchange", () => this.go());
         this.go();
+        // 앱을 다시 열 때마다 PC 연결을 확인한다. 바뀌었으면(켜짐↔꺼짐) 지금 화면을 새로 불러온다.
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState !== "visible") return;
+          D.recheck().then((changed) => changed && this.go()).catch(() => {});
+        });
         // 화면 맨 아래 가까이 오면 더 불러오기 (검색 결과, 주제 상세)
         window.addEventListener("scroll", () => this.nearBottom() && this.loadMore(), { passive: true });
       },
@@ -286,9 +295,25 @@
         });
       },
 
+      // --- 연결 상태 (상단 바) ---
+      snapshotMode() {
+        return this.conn.mode === "snapshot";
+      },
+
+      connLabel() {
+        if (!this.snapshotMode()) return "PC 연결됨";
+        const when = this.conn.generatedAt ? this.ago(this.conn.generatedAt) : "";
+        return when ? `스냅샷 · 마지막 업데이트 ${when}` : "스냅샷";
+      },
+
+      // 스냅샷에서 바꾼 것은 대기열에 들어갔다가 PC 에 연결되면 반영된다
+      pendingSuffix() {
+        return this.snapshotMode() ? " · PC에 연결되면 반영돼요" : "";
+      },
+
       // --- 설정: 아이폰 단축어 ---
       shortcutUrl() {
-        return `${location.origin}/api/items`;
+        return `${D.pcUrl()}/api/items`;
       },
 
       async copyShortcutUrl() {
@@ -520,7 +545,8 @@
           const changed = res.ids;
           this.cancelSelect();
           const n = changed.length;
-          this.showToast(n > 1 ? `${n}개를 ${labels[action]}` : labels[action], () => D.bulk(changed, reverse));
+          const text = (n > 1 ? `${n}개를 ${labels[action]}` : labels[action]) + this.pendingSuffix();
+          this.showToast(text, () => D.bulk(changed, reverse));
           this.removeFromLists(changed, action);
         } catch (e) {
           this.handleError(e);
@@ -558,7 +584,7 @@
         d.favorite = next; // 먼저 화면에 반영하고, 실패하면 되돌린다
         try {
           await D.setFavorite(d.id, next);
-          this.showToast(next ? "즐겨찾기에 넣었어요" : "즐겨찾기에서 뺐어요", null);
+          this.showToast((next ? "즐겨찾기에 넣었어요" : "즐겨찾기에서 뺐어요") + this.pendingSuffix(), null);
         } catch (e) {
           d.favorite = !next;
           this.handleError(e);
@@ -701,8 +727,8 @@
         this.addMessage = null;
         try {
           const res = await D.addUrl(this.addUrl.trim());
-          this.addMessage = { ok: ["added", "restored", "duplicate"].includes(res.result), text: res.message };
-          if (res.result === "added" || res.result === "restored") this.addUrl = "";
+          this.addMessage = { ok: ["added", "restored", "duplicate", "queued"].includes(res.result), text: res.message };
+          if (["added", "restored", "queued"].includes(res.result)) this.addUrl = "";
           await this.loadAdds();
         } catch (e) {
           this.handleError(e);
@@ -719,6 +745,7 @@
           case "analyzed": return { step: 2, label: "분석 중", tone: "work" };
           case "indexed": return { step: 3, label: "완료", tone: "done" };
           case "unavailable": return { step: 0, label: "볼 수 없는 영상", tone: "fail" };
+          case "queued": return { step: 0, label: "PC 연결 기다리는 중", tone: "wait" }; // 스냅샷 대기열
           default: return { step: 0, label: "처리 실패", tone: "fail" };
         }
       },

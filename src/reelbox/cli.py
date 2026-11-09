@@ -1,5 +1,5 @@
-"""Typer 명령 모음. Phase 6까지: init, status, import, sync youtube, enrich, analyze, review,
-organize, index, search, serve(+ 공유 항목 자동 처리 워커), purge."""
+"""Typer 명령 모음: init, status, import, sync youtube, enrich, analyze, review, organize,
+index, run, search, serve(+ 공유 항목 자동 처리 워커·자동 publish), purge, publish."""
 
 import logging
 import sqlite3
@@ -13,6 +13,7 @@ from rich.logging import RichHandler
 from rich.table import Table
 
 from reelbox import db
+from reelbox import publish as publisher
 from reelbox.ai import analyze as analyzer
 from reelbox.ai import organize as organizer
 from reelbox.ai.llm import AnthropicLLM, LLMFatalError, LLMUnavailableError
@@ -20,6 +21,7 @@ from reelbox.config import Settings, get_settings
 from reelbox.enrich import runner
 from reelbox.enrich.transcribe import WhisperTranscriber
 from reelbox.importers import ImportReport, instagram, urllist, youtube
+from reelbox.pipeline import PipelineDeps, run_pipeline
 from reelbox.search import index as indexer
 from reelbox.search import query as searcher
 from reelbox.search.embed import BgeM3Embedder
@@ -557,9 +559,53 @@ def search(
 
 
 @app.command()
-def run() -> None:
-    """enrich → analyze → organize → index 를 차례로."""
-    _not_implemented("run")
+def run(
+    limit: Annotated[
+        int | None,
+        typer.Option(
+            "--limit",
+            min=0,
+            help="내보내기 항목까지 이만큼 새로 보강·분석 (없으면 공유·다시 시도 항목만)",
+        ),
+    ] = None,
+) -> None:
+    """enrich → analyze → organize → index 를 차례로 하고, 끝나면 publish."""
+    settings = get_settings()
+    deps = PipelineDeps(
+        enrich=runner.EnrichDeps(
+            open_client=_client_factory(settings),
+            transcriber=WhisperTranscriber(
+                settings.whisper_model, settings.whisper_device, settings.whisper_compute_type
+            ),
+        ),
+        llm=_make_llm(settings),
+        organize_llm=_make_organize_llm(settings),
+        embedder=lambda: _make_embedder(settings),
+    )
+    if limit is None:
+        console.print(
+            "[dim]공유·다시 시도 항목만 처리해요. 아직 안 한 내보내기 항목은 --limit N 으로[/dim]"
+        )
+    conn = _open_db(settings)
+    try:
+        with console.status("준비 중...") as spinner:
+            report = run_pipeline(
+                conn, settings, deps, limit=limit, on_status=lambda msg: spinner.update(msg)
+            )
+        _print_enrich_report(report.enrich)
+        _print_analyze_report(report.analyze, settings)
+        if report.organize is not None:
+            _print_organize_report(report.organize, settings)
+        if report.organize_skipped_no_topics:
+            console.print(
+                "[yellow]주제가 아직 없어 주제 정리를 건너뜀[/yellow] — "
+                "[bold]reelbox organize[/bold] 로 처음 정리를 먼저 해 주세요"
+            )
+        console.print(f"색인 [green]{report.index.indexed}개[/green]")
+        # run 이 끝나면 보기 전용 사이트도 새로 (DESIGN.md 6장). 실패해도 run 자체는 성공이다.
+        _publish(conn, settings, dry_run=False, force=False, fail_exit=False)
+    finally:
+        conn.close()
 
 
 def _worker_deps(settings: Settings, get_embedder: EmbedderGetter) -> WorkerDeps:
@@ -628,7 +674,53 @@ def purge(
     console.print(f"[green]완료[/green] 영구 정리 {len(ids)}개")
 
 
+def _size(n: int) -> str:
+    return f"{n / 1024 / 1024:.1f}MB" if n >= 1024 * 1024 else f"{n / 1024:.0f}KB"
+
+
+def _publish(
+    conn: sqlite3.Connection, settings: Settings, *, dry_run: bool, force: bool, fail_exit: bool
+) -> None:
+    from datetime import UTC, datetime
+
+    try:
+        with console.status("스냅샷 만드는 중..."):
+            report = publisher.publish(
+                conn, settings, now=datetime.now(UTC), dry_run=dry_run, force=force
+            )
+    except publisher.PublishError as exc:
+        console.print(f"[red]publish 실패[/red] {exc}")
+        if fail_exit:
+            raise typer.Exit(code=1) from exc
+        return
+    b = report.build
+    summary = (
+        f"영상 {b.items}개 · 주제 {b.topics}개 · 썸네일 {b.thumbs}개 · "
+        f"파일 {b.files}개 · {_size(b.bytes)}"
+    )
+    match report.result:
+        case publisher.PublishResult.DRY_RUN:
+            console.print(f"[bold]미리 보기[/bold] (만들지도 올리지도 않음)\n{summary}")
+        case publisher.PublishResult.BUILT:
+            console.print(
+                f"[yellow]{report.dist} 만 만들었어요[/yellow] — .env 에 REELBOX_PAGES_PROJECT·"
+                f"REELBOX_PAGES_URL 이 없어 배포는 안 함\n{summary}"
+            )
+        case publisher.PublishResult.UNCHANGED:
+            console.print(f"[dim]지난번 배포와 같아서 올리지 않음[/dim] ({summary})")
+        case publisher.PublishResult.DEPLOYED:
+            console.print(f"[green]배포 완료[/green] {settings.pages_url}\n{summary}")
+
+
 @app.command()
-def publish(dry_run: DryRunOpt = False) -> None:
-    """스냅샷을 만들어 보기 전용 사이트에 배포."""
-    _not_implemented("publish")
+def publish(
+    dry_run: DryRunOpt = False,
+    force: Annotated[bool, typer.Option("--force", help="바뀐 게 없어도 올리기")] = False,
+) -> None:
+    """스냅샷을 만들어 보기 전용 사이트(Cloudflare Pages)에 배포."""
+    settings = get_settings()
+    conn = _open_db(settings)
+    try:
+        _publish(conn, settings, dry_run=dry_run, force=force, fail_exit=True)
+    finally:
+        conn.close()

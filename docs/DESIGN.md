@@ -238,6 +238,20 @@ Go가 더 익숙하더라도, 이 프로젝트는 AI·영상 도구 때문에 Py
 - **실패 다시 시도:** 시도 횟수를 0으로 되돌리고 `items.retry_requested=1`로 표시한다. 상태는 `failed` 그대로라 자막이 없으면 보강부터, 자막만 있으면 분석부터 다시 한다. 워커는 원래 공유 항목만 처리하지만, 다시 시도를 누른 항목은 내보내기로 들어왔어도 처리한다(직접 고른 몇 개라 인스타 한도·API 요금 부담이 작음). 인스타 요청 간격·일일 한도는 그대로 지킨다.
 - **API 추가:** `GET /api/topics`, `PATCH /api/topics/{id}`(`name`), `POST /api/topics/{id}/merge`(`into`), `PUT /api/items/{id}/topic`(`topic_id`), `PATCH /api/items/{id}`가 `hidden`·`favorite`·`note` 중 보낸 것만 바꿈, `GET /api/failed`, `POST /api/items/{id}/retry`, `POST /api/failed/retry`, `/api/search?favorite=true`, `/api/items?favorite=true`(즐겨찾기 탭).
 
+### Phase 8 결정
+
+- **PC가 꺼져 있을 때 공유:** 아이폰 단축어는 실패했을 때 다른 동작으로 넘어갈 수 없다. 단축어로 Safari를 열어도 Safari와 홈 화면 앱은 저장소가 달라서 대기열이 보이지 않는다. 그래서 단축어 맨 앞에 **클립보드에 복사**를 넣는다. 전송이 실패하면 앱의 추가 탭에서 붙여넣어 대기열에 넣는다. 클라우드 우편함(Pages Functions + KV)은 설정과 코드가 커서 만들지 않았다.
+- **`reelbox run`:** `run`은 워커와 같은 규칙으로 공유·다시 시도 항목만 보강·분석한다. `run --limit N`일 때만 아직 안 한 내보내기 항목까지 N개를 새로 처리한다(약 100개만 먼저 처리하기로 한 결정 보호). 주제가 하나도 없으면 주제 정리는 건너뛴다(전체 정리는 `organize`로 직접). 끝나면 publish하고, publish가 실패해도 run은 성공으로 끝난다. 처리 순서는 `pipeline.py`.
+- **토큰:** Pages 주소에서 연 앱이 PC API를 부르면 다른 사이트 요청이 된다. 아이폰 Safari는 이런 요청에 쿠키를 붙이지 않는다. 그래서 Pages 화면에서는 토큰을 이 기기 저장소(localStorage)에 두고 `Authorization: Bearer` 헤더로 보낸다. PC 주소로 직접 열면 지금처럼 쿠키를 쓴다. PC API의 CORS는 `REELBOX_PAGES_URL` 하나만 허용하고(쿠키를 쓰지 않으므로 credentials 없음), 사전 요청(preflight)은 토큰 없이 통과한다.
+- **썸네일:** `<img>`는 헤더를 붙일 수 없어서 Pages 화면에서는 PC의 `/thumbs/`를 못 읽는다. 그래서 PC에 연결돼 있어도 Pages에 올려 둔 썸네일 사본(`/thumbs/` 같은 이름)을 쓴다. 마지막 publish 뒤에 추가한 영상은 다음 publish 전까지 빈칸이다.
+- **어디서 열렸는지:** data.js가 `/snapshot/meta.json`을 읽어 본다. 있으면 Pages(meta의 `pc_url`로 2초 안에 연결 시도, 401도 "연결됨"), 없으면 PC 주소에서 연 것이다(항상 PC). 앱을 다시 열 때(visibilitychange)와 PC 요청이 도중에 실패할 때 다시 확인한다.
+- **스냅샷 파일:** `data/dist/`에 화면 파일 + `snapshot/items.json`·`topics.json`·`meta.json` + `thumbs/`. 항목은 홈 목록과 같은 기준(분석 끝, 숨김·삭제 아님)이다. 원본 설명(description)도 자막처럼 넣지 않는다. 바뀌었는지는 `meta.json`(업데이트 시각)을 뺀 모든 파일의 지문(sha256)으로 판단해 `data/publish_state.json`에 기록한다. 그래서 화면의 "마지막 업데이트"는 내용이 마지막으로 바뀌어 올라간 시각이다. run과 serve가 동시에 publish하지 않게 파일 잠금을 쓴다.
+- **스냅샷에서 되는 것·안 되는 것:** 대기열에 넣는 것은 숨기기·숨김 해제·삭제·복원(되돌리기)·즐겨찾기·추가다. 화면에 먼저 반영하고 다시 열어도 유지한다. 메모·주제 바꾸기·이름 바꾸기·합치기·다시 시도·숨긴 항목/휴지통/실패 목록은 "PC에 연결됐을 때 할 수 있어요"로 안내한다. 대기열은 PC에 연결되면 순서대로 보낸다. 연결·토큰 문제나 5xx면 멈추고, 4xx(이미 영구 삭제 등)는 버린다.
+- **Access 확인:** Pages의 "Access 정책 켜기"는 미리보기 주소만 잠근다. 그래서 Access 앱을 `reelbox.pages.dev`용과 `*.reelbox.pages.dev`용 두 개 만든다(`docs/cloudflare-setup.md`). publish는 배포 전에 두 주소(`<프로젝트>.pages.dev`, `reelbox-access-check.<프로젝트>.pages.dev`)를 로그인 없이 열어 보고, 둘 다 `*.cloudflareaccess.com`으로 넘어갈 때만 올린다.
+- **배포:** `npx wrangler@4 pages deploy data/dist --project-name <프로젝트> --branch main`. Cloudflare 토큰·계정 ID는 `.env`에서 읽어 wrangler에 환경변수로 넘긴다. 자동 publish는 serve가 켜질 때 한 번, 그다음 하루마다(`REELBOX_PUBLISH_INTERVAL_SEC`) 돈다. Pages 설정이 비어 있으면 `data/dist`만 만든다.
+- **서비스 워커:** 리다이렉트된 응답(Access 로그인 화면)은 캐시하지 않는다. 스냅샷 JSON은 네트워크를 먼저 쓰고, 안 되면 캐시를 쓴다.
+- **Playwright 확인:** WSL에 WebKit 라이브러리가 없어서 Chromium(390x844, 모바일)으로 확인했다.
+
 ### 보기 전용 사이트 (PC가 꺼져 있을 때)
 
 PC가 켜질 때마다 결과를 **스냅샷**(JSON 파일 + 썸네일)으로 묶어 Cloudflare Pages에 올린다. 휴대폰 앱은 하나다. 먼저 PC에 연결을 시도하고, 2초 안에 답이 없으면 스냅샷을 연다. 비유하면 주방(PC)이 닫혀 있을 때 문 앞에 붙여둔 메뉴판을 보는 것이다.
@@ -252,7 +266,7 @@ PC가 켜질 때마다 결과를 **스냅샷**(JSON 파일 + 썸네일)으로 �
 | 키워드 검색 | 서버 FTS5 | 휴대폰 안에서 MiniSearch |
 | 의미 검색 | 됨 | 안 됨. 대신 미리 계산한 "비슷한 영상" |
 | 데이터 | 실시간 | 마지막 publish 시점 |
-| 공유로 추가 | 바로 처리 | 휴대폰에 쌓아두었다가 PC가 켜지면 전송 (단축어는 PC로 바로 보내므로 방법은 Phase 8에서 다시 정함) |
+| 공유로 추가 | 바로 처리 | 단축어 전송은 실패하지만 링크가 클립보드에 남음 → 앱 추가 탭에 붙여넣으면 휴대폰 대기열에 쌓았다가 PC가 켜지면 전송 (Phase 8 결정) |
 | 숨기기·삭제·즐겨찾기 | 바로 반영 | 휴대폰 화면에만 먼저 반영, PC가 켜지면 전송 |
 
 - **화면은 하나:** 화면은 빌드 없는 정적 파일(HTML·JS)이고, 데이터는 `static/data.js` 한 곳에서만 읽는다. data.js가 PC API와 스냅샷 중 하나를 고른다. 같은 TV에서 채널만 바꾸는 것과 같다.
@@ -282,10 +296,11 @@ reelbox/
 │  ├─ enrich/              # metadata.py, captions.py, transcribe.py
 │  ├─ ai/                  # llm.py(인터페이스), analyze.py, organize.py
 │  ├─ search/              # embed.py, index.py, query.py
+│  ├─ pipeline.py          # run: enrich → analyze → organize → index
 │  ├─ publish.py           # 스냅샷 만들기·Cloudflare Pages 배포
 │  ├─ purge.py             # 휴지통 30일 지난 항목 영구 정리
 │  ├─ worker.py            # 공유로 들어온 항목 자동 처리
-│  └─ web/                 # app.py(앱·썸네일), auth.py(토큰), routes/api.py(JSON API), static/(index.html, app.js, data.js, sw.js, manifest.json, icons/)
+│  └─ web/                 # app.py(앱·썸네일), auth.py(토큰), routes/api.py(JSON API), static/(index.html, app.js, data.js, search_ko.js, sw.js, manifest.json, icons/)
 ├─ tests/                  # fixtures/(가짜 내보내기 파일), test_*.py
 └─ data/                   # reelbox.db, tmp/, thumbs/, dist/ (git 제외)
 ```
@@ -301,13 +316,13 @@ reelbox/
 | `reelbox review [--limit N]` | 최근 분석 결과를 표로 보기 (제목·요약·주제·태그) |
 | `reelbox organize [--full] [--limit N]` | 주제 정리 (`--limit`은 새 항목 배정에만) |
 | `reelbox index [--limit N]` | 임베딩·검색 색인 |
-| `reelbox run` | 위 4단계를 차례로 |
+| `reelbox run [--limit N]` | 위 4단계를 차례로 + publish. `--limit` 없으면 공유·다시 시도 항목만, 있으면 내보내기 항목까지 N개 (Phase 8 결정) |
 | `reelbox search "검색어"` | 터미널에서 검색 (확인용) |
 | `reelbox status` | 상태별 개수, 최근 실패 |
 | `reelbox serve [--host] [--port]` | 웹 서버 + 백그라운드 워커 |
 | `reelbox purge` | 휴지통에서 30일 지난 항목 영구 정리 |
 | `reelbox sync youtube` | 유튜브 "저장된 Shorts 동영상" 목록을 읽어 새 항목 추가 (처음 가져오기도 이 명령) |
-| `reelbox publish [--dry-run]` | 스냅샷을 만들어 보기 전용 사이트에 배포 |
+| `reelbox publish [--dry-run] [--force]` | 스냅샷을 만들어 보기 전용 사이트에 배포 (바뀐 게 없으면 안 올림, `--force`면 올림) |
 
 ## 8. 단계별 개발 계획
 

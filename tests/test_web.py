@@ -396,3 +396,59 @@ def test_add_finds_url_when_shortcut_key_is_wrong(client: TestClient) -> None:
     res = client.post("/api/items", json=body, headers=AUTH).json()
     assert res["result"] == "added"
     assert res["item"]["url"] == "https://www.instagram.com/reel/AbCdEfGhIjK/"
+
+
+# --- 보기 전용 사이트에서 PC API 부르기 (Phase 8: CORS) ---
+
+PAGES = "https://reelbox.pages.dev"
+
+
+@pytest.fixture
+def pages_client(web_settings: Settings, conn: sqlite3.Connection) -> Iterator[TestClient]:
+    configured = web_settings.model_copy(
+        update={"pages_url": PAGES + "/", "pages_project": "reelbox"}
+    )
+    app = create_app(configured, auto_purge=False, auto_publish=False, now=lambda: NOW)
+    with TestClient(app) as c:
+        yield c
+
+
+def test_preflight_from_pages_is_allowed_without_token(pages_client: TestClient) -> None:
+    res = pages_client.options(
+        "/api/items/1",
+        headers={
+            "Origin": PAGES,
+            "Access-Control-Request-Method": "PATCH",
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+    assert res.status_code == 200
+    assert res.headers["access-control-allow-origin"] == PAGES
+    assert "PATCH" in res.headers["access-control-allow-methods"]
+
+
+def test_pages_request_with_bearer_gets_cors_headers(
+    pages_client: TestClient, library: dict[str, int]
+) -> None:
+    res = pages_client.get("/api/home", headers={"Origin": PAGES, **AUTH})
+    assert res.status_code == 200
+    assert res.headers["access-control-allow-origin"] == PAGES
+    # 토큰이 없어도 화면이 401 을 읽을 수 있어야 토큰 입력 화면을 띄운다
+    denied = pages_client.get("/api/status", headers={"Origin": PAGES})
+    assert denied.status_code == 401
+    assert denied.headers["access-control-allow-origin"] == PAGES
+
+
+def test_other_origins_get_no_cors_headers(pages_client: TestClient) -> None:
+    res = pages_client.get("/api/home", headers={"Origin": "https://evil.example", **AUTH})
+    assert "access-control-allow-origin" not in res.headers
+    pre = pages_client.options(
+        "/api/home",
+        headers={"Origin": "https://evil.example", "Access-Control-Request-Method": "GET"},
+    )
+    assert pre.status_code == 400
+
+
+def test_no_cors_without_pages_url(client: TestClient) -> None:
+    res = client.get("/api/home", headers={"Origin": PAGES, **AUTH})
+    assert "access-control-allow-origin" not in res.headers

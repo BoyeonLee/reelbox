@@ -39,8 +39,6 @@ def test_init_then_status(settings: Settings) -> None:
     "args",
     [
         ["import", "youtube", "x"],
-        ["run"],
-        ["publish", "--dry-run"],
     ],
 )
 def test_unimplemented_commands(args: list[str]) -> None:
